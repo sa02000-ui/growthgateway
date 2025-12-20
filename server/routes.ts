@@ -73,8 +73,19 @@ export async function registerRoutes(
         .single();
 
       if (error) {
-        console.error('Supabase insert error:', error);
-        return res.status(500).json({ error: "Failed to save assessment results" });
+        console.error('Supabase insert error - Full details:', JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          userId: userId,
+          userIdType: typeof userId
+        }, null, 2));
+        return res.status(500).json({ 
+          error: "Failed to save assessment results",
+          code: error.code,
+          message: error.message
+        });
       }
 
       res.json({ 
@@ -196,8 +207,18 @@ export async function registerRoutes(
         .single();
 
       if (error) {
-        console.error('Supabase insert error:', error);
-        return res.status(500).json({ error: "Failed to save peer feedback", details: error.message });
+        console.error('Supabase peer feedback insert error - Full details:', JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          targetUserId: userId
+        }, null, 2));
+        return res.status(500).json({ 
+          error: "Failed to save peer feedback", 
+          code: error.code,
+          message: error.message 
+        });
       }
 
       res.json({ success: true, feedbackId: data.id });
