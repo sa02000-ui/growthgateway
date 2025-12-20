@@ -46,12 +46,20 @@ export default function AssessmentsTab() {
   const submitMutation = useMutation({
     mutationFn: async (data: { userId: string; responses: AssessmentResponses }) => {
       const res = await apiRequest('POST', '/api/assessment/submit', data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `Server error: ${res.status}`);
+      }
       return res.json();
     },
     onSuccess: (data) => {
       setLatestScores(data.scores);
       setState('results');
       queryClient.invalidateQueries({ queryKey: ['/api/assessment/results', user?.id] });
+    },
+    onError: (error: Error) => {
+      alert(`Assessment submission failed: ${error.message}\n\nPlease try again or contact support if this persists.`);
+      console.error('Assessment submission error:', error);
     },
   });
 

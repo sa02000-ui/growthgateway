@@ -51,3 +51,20 @@ export type TraitScores = z.infer<typeof traitScoresSchema>;
 
 export const assessmentResponsesSchema = z.record(z.string(), z.number().min(1).max(5));
 export type AssessmentResponses = z.infer<typeof assessmentResponsesSchema>;
+
+export const peerFeedback = pgTable("peer_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  targetUserId: varchar("target_user_id").notNull(),
+  scores: jsonb("scores").notNull(),
+  peerName: text("peer_name"),
+  isAnonymous: varchar("is_anonymous").notNull().default('false'),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPeerFeedbackSchema = createInsertSchema(peerFeedback).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPeerFeedback = z.infer<typeof insertPeerFeedbackSchema>;
+export type PeerFeedback = typeof peerFeedback.$inferSelect;

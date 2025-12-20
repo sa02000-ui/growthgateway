@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
@@ -30,6 +31,19 @@ interface AssessmentResult {
   assessment_type: string;
   scores: Record<TraitKey, number>;
   completed_at: string;
+}
+
+interface PeerFeedbackResponse {
+  feedback: Array<{
+    id: string;
+    target_user_id: string;
+    scores: Record<TraitKey, number>;
+    peer_name: string | null;
+    is_anonymous: string;
+    created_at: string;
+  }>;
+  count: number;
+  averageScores: Record<TraitKey, number> | null;
 }
 
 const traitNames: Record<TraitKey, string> = {
@@ -85,14 +99,22 @@ function calculateComparison(baseline: AssessmentResult, latest: AssessmentResul
 
 export default function HomeTab() {
   const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const { data: resultsData, isLoading } = useQuery<{ results: AssessmentResult[] }>({
     queryKey: ['/api/assessment/results', user?.id],
     enabled: !!user?.id,
   });
 
+  const { data: peerData } = useQuery<PeerFeedbackResponse>({
+    queryKey: ['/api/peer-feedback', user?.id],
+    enabled: !!user?.id,
+  });
+
   const results = resultsData?.results || [];
   const filteredResults = filterTo30DayWindows(results);
+  const peerAverages = peerData?.averageScores;
+  const peerCount = peerData?.count || 0;
   
   const chartData = filteredResults.map(result => ({
     date: format(new Date(result.completed_at), 'MMM d'),
@@ -113,12 +135,49 @@ export default function HomeTab() {
   const comparison = hasComparison ? calculateComparison(baseline, latest) : null;
 
   const radarData = latest ? [
-    { trait: 'Openness', value: Math.round(latest.scores.O), fullMark: 100 },
-    { trait: 'Conscientiousness', value: Math.round(latest.scores.C), fullMark: 100 },
-    { trait: 'Extraversion', value: Math.round(latest.scores.E), fullMark: 100 },
-    { trait: 'Agreeableness', value: Math.round(latest.scores.A), fullMark: 100 },
-    { trait: 'Neuroticism', value: Math.round(latest.scores.N), fullMark: 100 },
+    { 
+      trait: 'Openness', 
+      self: Math.round(latest.scores.O), 
+      peer: peerAverages ? Math.round(peerAverages.O) : null,
+      fullMark: 100 
+    },
+    { 
+      trait: 'Conscientiousness', 
+      self: Math.round(latest.scores.C), 
+      peer: peerAverages ? Math.round(peerAverages.C) : null,
+      fullMark: 100 
+    },
+    { 
+      trait: 'Extraversion', 
+      self: Math.round(latest.scores.E), 
+      peer: peerAverages ? Math.round(peerAverages.E) : null,
+      fullMark: 100 
+    },
+    { 
+      trait: 'Agreeableness', 
+      self: Math.round(latest.scores.A), 
+      peer: peerAverages ? Math.round(peerAverages.A) : null,
+      fullMark: 100 
+    },
+    { 
+      trait: 'Neuroticism', 
+      self: Math.round(latest.scores.N), 
+      peer: peerAverages ? Math.round(peerAverages.N) : null,
+      fullMark: 100 
+    },
   ] : [];
+
+  const feedbackUrl = user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(feedbackUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      alert('Failed to copy link. Please copy manually: ' + feedbackUrl);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -226,10 +285,10 @@ export default function HomeTab() {
       change: baseline ? 'Your baseline date' : 'Not yet started'
     },
     { 
-      label: 'Latest Assessment', 
-      value: latest ? format(new Date(latest.completed_at), 'MMM d, yyyy') : 'N/A', 
-      icon: Activity, 
-      change: latest ? 'Most recent result' : 'Not yet started'
+      label: 'Peer Feedback', 
+      value: peerCount.toString(), 
+      icon: Users, 
+      change: peerCount > 0 ? `${peerCount} response${peerCount !== 1 ? 's' : ''} received` : 'Invite peers for feedback'
     },
   ];
 
@@ -265,44 +324,111 @@ export default function HomeTab() {
         ))}
       </div>
 
+      {/* Invite Peers Section */}
+      <Card className="bg-card border-border" data-testid="card-invite-peers">
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-primary" />
+                Invite Peers
+              </CardTitle>
+              <CardDescription>
+                Get feedback from friends, family, or colleagues to see how others perceive you
+              </CardDescription>
+            </div>
+            {peerCount > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {peerCount} response{peerCount !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 bg-muted/50 rounded-md px-4 py-2.5 text-sm text-muted-foreground truncate border border-border">
+              {feedbackUrl}
+            </div>
+            <Button 
+              onClick={copyLink}
+              className="gap-2 flex-shrink-0"
+              data-testid="button-copy-link"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy Link
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Share this link with people who know you well. They can provide anonymous feedback on how they perceive your personality.
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
-              Current Snapshot
+              Perception Gap
             </CardTitle>
             <CardDescription>
-              Your latest personality profile
+              How you see yourself vs how others see you
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="h-[280px]" data-testid="chart-radar">
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                   <PolarGrid stroke="hsl(var(--border))" />
                   <PolarAngleAxis 
                     dataKey="trait" 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickLine={false}
                   />
                   <PolarRadiusAxis 
                     angle={90} 
                     domain={[0, 100]} 
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }}
                     tickCount={5}
                   />
                   <Radar
-                    name="Your Profile"
-                    dataKey="value"
+                    name="How I see myself"
+                    dataKey="self"
                     stroke="hsl(var(--primary))"
                     fill="hsl(var(--primary))"
                     fillOpacity={0.3}
                     strokeWidth={2}
                   />
+                  {peerAverages && (
+                    <Radar
+                      name="How my network sees me"
+                      dataKey="peer"
+                      stroke="hsl(var(--chart-2))"
+                      fill="transparent"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                    />
+                  )}
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
+            {!peerAverages && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Invite peers to see how others perceive you
+              </p>
+            )}
           </CardContent>
         </Card>
 

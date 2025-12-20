@@ -8,6 +8,7 @@ import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import Terms from "@/pages/terms";
+import FeedbackPage from "@/pages/feedback";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/terms" component={Terms} />
+      <Route path="/feedback/:userId" component={FeedbackPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/dashboard/:rest*" component={Dashboard} />
       <Route component={NotFound} />

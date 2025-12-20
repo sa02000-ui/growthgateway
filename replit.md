@@ -79,8 +79,15 @@ npm run dev
 - `POST /api/assessment/submit` - Submit responses and get trait scores
 - `GET /api/assessment/results/:userId` - Get user's assessment history
 - `GET /api/assessment/result/:resultId` - Get single assessment result
+- `GET /api/peer-feedback/questions` - Returns 30 peer feedback questions (public)
+- `GET /api/peer-feedback/user/:userId` - Check if user exists (public, no PII)
+- `POST /api/peer-feedback/:userId` - Submit peer feedback (public)
+- `GET /api/peer-feedback/:userId` - Get all peer feedback with averages (authenticated)
 
 ## Recent Changes
+- 2024-12-20: Added Peer Feedback Engine - public /feedback/:userId route, 30-question test, anonymity option
+- 2024-12-20: Updated Radar Chart to show self vs peer perception gap with two shapes
+- 2024-12-20: Fixed Sign Out button and added error handling to assessment submission
 - 2024-12-20: UI polish - Sage Green theme, Footer with Terms page, improved sidebar
 - 2024-12-20: Added Timeline View with Line Chart and Growth Comparison feature
 - 2024-12-20: Added IPIP-NEO-120 personality assessment with scoring engine and results storage
