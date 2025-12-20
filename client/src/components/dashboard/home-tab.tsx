@@ -182,11 +182,19 @@ export default function HomeTab() {
 
   const [injecting, setInjecting] = useState(false);
 
+  const { session } = useAuth();
+
   const injectTestData = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !session?.access_token) {
+      alert('You must be logged in to inject test data');
+      return;
+    }
     setInjecting(true);
     try {
-      const response = await apiRequest('POST', '/api/debug/inject-test-data', { userId: user.id });
+      const response = await apiRequest('POST', '/api/debug/inject-test-data', { 
+        userId: user.id,
+        accessToken: session.access_token
+      });
       const data = await response.json();
       if (data.success) {
         alert('Test data injected! Scores: O:80, C:40, E:70, A:60, N:30');

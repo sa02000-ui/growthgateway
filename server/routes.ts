@@ -273,10 +273,34 @@ export async function registerRoutes(
   // DEBUG: Inject test data (temporary endpoint for testing)
   app.post("/api/debug/inject-test-data", async (req, res) => {
     try {
-      const { userId } = req.body;
+      const { userId, accessToken } = req.body;
 
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
+      if (!userId || !accessToken) {
+        return res.status(400).json({ error: "userId and accessToken are required" });
+      }
+
+      // Create an authenticated Supabase client using the user's access token
+      const { createClient } = await import('@supabase/supabase-js');
+      const authenticatedClient = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        }
+      );
+
+      // Verify the user
+      const { data: { user }, error: authError } = await authenticatedClient.auth.getUser();
+      if (authError || !user) {
+        return res.status(401).json({ error: "Invalid access token", details: authError?.message });
+      }
+
+      if (user.id !== userId) {
+        return res.status(403).json({ error: "User ID mismatch" });
       }
 
       const testScores = { O: 80, C: 40, E: 70, A: 60, N: 30 };
@@ -285,10 +309,10 @@ export async function registerRoutes(
         mockResponses[i.toString()] = 3;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await authenticatedClient
         .from('results_log')
         .insert({
-          user_id: userId,
+          user_id: user.id,
           assessment_type: 'IPIP-NEO-120',
           responses: mockResponses,
           scores: testScores,
@@ -307,7 +331,7 @@ export async function registerRoutes(
           message: error.message,
           details: error.details,
           hint: error.hint,
-          userId: userId
+          userId: user.id
         }, null, 2));
         return res.status(500).json({ 
           error: "Failed to inject test data",
