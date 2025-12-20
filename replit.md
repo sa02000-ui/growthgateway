@@ -43,6 +43,16 @@ server/
 2. **Authentication**: Email/Password + Google OAuth via Supabase Auth UI
 3. **Dashboard**: Multi-tab layout with sidebar navigation
 4. **Perception Gap Chart**: Radar chart showing 4 overlapping datasets
+5. **IPIP-NEO-120 Assessment**: Complete 120-question personality assessment with:
+   - Paginated question display (10 per page)
+   - Positive/negative keyed scoring
+   - Big Five trait calculation (OCEAN)
+   - Results visualization with trait interpretations
+   - Assessment history tracking
+
+## Shared Modules
+- `shared/ipip-neo-120.ts` - All 120 questions with trait assignments and +/- keying
+- `shared/scoring.ts` - Scoring logic for calculating Big Five trait percentages
 
 ## Environment Variables
 Required secrets in Replit Secrets:
@@ -64,6 +74,11 @@ npm run dev
 ## API Endpoints
 - `GET /api/config` - Returns Supabase configuration for frontend
 - `GET /api/health` - Health check endpoint
+- `GET /api/assessment/questions` - Returns all 120 IPIP-NEO questions
+- `POST /api/assessment/submit` - Submit responses and get trait scores
+- `GET /api/assessment/results/:userId` - Get user's assessment history
+- `GET /api/assessment/result/:resultId` - Get single assessment result
 
 ## Recent Changes
+- 2024-12-20: Added IPIP-NEO-120 personality assessment with scoring engine and results storage
 - 2024-12-20: Initial MVP with landing, auth, and dashboard pages
