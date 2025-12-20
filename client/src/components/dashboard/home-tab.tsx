@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -99,23 +98,82 @@ function calculateComparison(baseline: AssessmentResult, latest: AssessmentResul
 }
 
 export default function HomeTab() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [results, setResults] = useState<AssessmentResult[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [peerCount, setPeerCount] = useState(0);
+  const [peerAverages, setPeerAverages] = useState<Record<TraitKey, number> | null>(null);
 
-  const { data: resultsData, isLoading } = useQuery<{ results: AssessmentResult[] }>({
-    queryKey: ['/api/assessment/results', user?.id],
-    enabled: !!user?.id,
-  });
+  // Fetch assessment results directly from Supabase with user's auth
+  useEffect(() => {
+    async function fetchData() {
+      if (!user?.id || !supabase) {
+        setIsLoading(false);
+        return;
+      }
 
-  const { data: peerData } = useQuery<PeerFeedbackResponse>({
-    queryKey: ['/api/peer-feedback', user?.id],
-    enabled: !!user?.id,
-  });
+      setIsLoading(true);
+      try {
+        // Fetch assessment results
+        const { data: resultsData, error: resultsError } = await supabase
+          .from('results_log')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('completed_at', { ascending: false });
 
-  const results = resultsData?.results || [];
+        if (resultsError) {
+          console.error('Error fetching results:', resultsError);
+        } else if (resultsData) {
+          // Map database format to component format
+          const mappedResults: AssessmentResult[] = resultsData.map((row: any) => ({
+            id: row.id,
+            user_id: row.user_id,
+            assessment_type: row.assessment_type,
+            completed_at: row.completed_at,
+            scores: row.scores || {
+              N: row.neuroticism_score || 0,
+              E: row.extraversion_score || 0,
+              O: row.openness_score || 0,
+              A: row.agreeableness_score || 0,
+              C: row.conscientiousness_score || 0,
+            },
+          }));
+          setResults(mappedResults);
+        }
+
+        // Fetch peer feedback (if table exists)
+        try {
+          const { data: peerData, error: peerError } = await supabase
+            .from('peer_feedback')
+            .select('*')
+            .eq('target_user_id', user.id);
+
+          if (!peerError && peerData && peerData.length > 0) {
+            setPeerCount(peerData.length);
+            // Calculate averages
+            const traits: TraitKey[] = ['N', 'E', 'O', 'A', 'C'];
+            const averages: Record<TraitKey, number> = { N: 0, E: 0, O: 0, A: 0, C: 0 };
+            for (const trait of traits) {
+              const sum = peerData.reduce((acc: number, fb: any) => acc + (fb.scores?.[trait] || 0), 0);
+              averages[trait] = sum / peerData.length;
+            }
+            setPeerAverages(averages);
+          }
+        } catch (peerErr) {
+          console.log('Peer feedback table may not exist yet');
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [user?.id, supabase]);
+
   const filteredResults = filterTo30DayWindows(results);
-  const peerAverages = peerData?.averageScores;
-  const peerCount = peerData?.count || 0;
   
   const chartData = filteredResults.map(result => ({
     date: format(new Date(result.completed_at), 'MMM d'),
