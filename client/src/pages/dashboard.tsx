@@ -1,0 +1,144 @@
+import { useEffect } from 'react';
+import { useLocation, Switch, Route } from 'wouter';
+import { useAuth } from '@/lib/auth-context';
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarHeader, 
+  SidebarMenu, 
+  SidebarMenuItem, 
+  SidebarMenuButton,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarGroup,
+  SidebarGroupContent
+} from '@/components/ui/sidebar';
+import { Home, ClipboardList, Users, UsersRound, LogOut, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import HomeTab from '@/components/dashboard/home-tab';
+import AssessmentsTab from '@/components/dashboard/assessments-tab';
+import PeerFeedbackTab from '@/components/dashboard/peer-feedback-tab';
+import FamilyTeamsTab from '@/components/dashboard/family-teams-tab';
+
+const navItems = [
+  { title: 'Home', icon: Home, href: '/dashboard' },
+  { title: 'My Assessments', icon: ClipboardList, href: '/dashboard/assessments' },
+  { title: 'Peer Feedback', icon: Users, href: '/dashboard/feedback' },
+  { title: 'Family & Teams', icon: UsersRound, href: '/dashboard/teams' },
+];
+
+export default function Dashboard() {
+  const { user, loading, signOut } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      setLocation('/auth');
+    }
+  }, [user, loading, setLocation]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#fefefe] flex items-center justify-center">
+        <div className="animate-pulse text-[#0f172a]">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const userInitials = user.email?.slice(0, 2).toUpperCase() || 'U';
+  const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+
+  const sidebarStyle = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
+  return (
+    <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <div className="flex h-screen w-full bg-[#fefefe]">
+        <Sidebar className="border-r border-[#0f172a]/10 bg-[#0f172a]">
+          <SidebarHeader className="p-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-white" />
+              <span className="text-white font-semibold text-lg tracking-tight">GrowthPortal</span>
+            </div>
+          </SidebarHeader>
+          <SidebarContent className="p-2">
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {navItems.map((item) => {
+                    const isActive = location === item.href || 
+                      (item.href !== '/dashboard' && location.startsWith(item.href));
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton 
+                          asChild
+                          isActive={isActive}
+                          className="text-gray-300 data-[active=true]:bg-white/10 data-[active=true]:text-white"
+                        >
+                          <a href={item.href} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                            <item.icon className="w-4 h-4" />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <div className="mt-auto p-4 border-t border-white/10">
+            <div className="flex items-center gap-3 mb-3">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={user.user_metadata?.avatar_url} />
+                <AvatarFallback className="bg-white/10 text-white text-xs">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{userName}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={signOut}
+              className="w-full justify-start text-gray-400 gap-2"
+              data-testid="button-sign-out"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
+        </Sidebar>
+
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-14 border-b border-[#0f172a]/10 flex items-center justify-between gap-4 px-4 bg-white">
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="text-[#0f172a]" />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Welcome back,</span>
+              <span className="text-sm font-medium text-[#0f172a]">{userName}</span>
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto p-6 md:p-8">
+            <Switch>
+              <Route path="/dashboard" component={HomeTab} />
+              <Route path="/dashboard/assessments" component={AssessmentsTab} />
+              <Route path="/dashboard/feedback" component={PeerFeedbackTab} />
+              <Route path="/dashboard/teams" component={FamilyTeamsTab} />
+            </Switch>
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
