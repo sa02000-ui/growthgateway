@@ -1,19 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Sparkles, Loader2 } from 'lucide-react';
+import { SiGoogle } from 'react-icons/si';
 import { Link } from 'wouter';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+type AuthView = 'sign_in' | 'sign_up';
 
 export default function AuthPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const [supabaseClient, setSupabaseClient] = useState<SupabaseClient | null>(null);
   const [clientLoading, setClientLoading] = useState(true);
+  const [authView, setAuthView] = useState<AuthView>('sign_in');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getSupabaseClient()
@@ -32,6 +43,61 @@ export default function AuthPage() {
       setLocation('/dashboard');
     }
   }, [user, loading, setLocation]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabaseClient) return;
+
+    setIsSubmitting(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      if (authView === 'sign_up') {
+        const { error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+          },
+        });
+        if (error) throw error;
+        setMessage('Check your email for the confirmation link!');
+      } else {
+        const { error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!supabaseClient) return;
+
+    setError(null);
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+    }
+  };
+
+  const toggleView = () => {
+    setAuthView(authView === 'sign_in' ? 'sign_up' : 'sign_in');
+    setError(null);
+    setMessage(null);
+  };
 
   if (loading || clientLoading) {
     return (
@@ -61,88 +127,120 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center px-4 pb-16">
         <Card className="w-full max-w-md bg-[#1e293b] border-white/10" data-testid="card-auth">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl font-bold text-white" data-testid="text-auth-title">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white" data-testid="text-auth-title">
+              {authView === 'sign_up' ? 'Create Account' : 'Welcome Back'}
+            </CardTitle>
             <CardDescription className="text-gray-400">
-              Sign in to continue your growth journey
+              {authView === 'sign_up' 
+                ? 'Sign up to start your growth journey' 
+                : 'Sign in to continue your growth journey'}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Auth
-              supabaseClient={supabaseClient}
-              appearance={{
-                theme: ThemeSupa,
-                variables: {
-                  default: {
-                    colors: {
-                      brand: '#ffffff',
-                      brandAccent: '#e2e8f0',
-                      brandButtonText: '#0f172a',
-                      defaultButtonBackground: '#334155',
-                      defaultButtonBackgroundHover: '#475569',
-                      inputBackground: '#1e293b',
-                      inputBorder: '#475569',
-                      inputBorderHover: '#64748b',
-                      inputBorderFocus: '#94a3b8',
-                      inputText: '#ffffff',
-                      inputLabelText: '#94a3b8',
-                      inputPlaceholder: '#64748b',
-                      messageText: '#f1f5f9',
-                      messageTextDanger: '#fca5a5',
-                      anchorTextColor: '#94a3b8',
-                      anchorTextHoverColor: '#e2e8f0',
-                    },
-                    borderWidths: {
-                      buttonBorderWidth: '1px',
-                      inputBorderWidth: '1px',
-                    },
-                    radii: {
-                      borderRadiusButton: '6px',
-                      buttonBorderRadius: '6px',
-                      inputBorderRadius: '6px',
-                    },
-                    space: {
-                      inputPadding: '12px',
-                      buttonPadding: '12px',
-                    },
-                    fonts: {
-                      bodyFontFamily: 'Inter, sans-serif',
-                      buttonFontFamily: 'Inter, sans-serif',
-                      inputFontFamily: 'Inter, sans-serif',
-                      labelFontFamily: 'Inter, sans-serif',
-                    },
-                  },
-                },
-                className: {
-                  container: 'auth-container',
-                  button: 'auth-button font-medium',
-                  input: 'auth-input',
-                  label: 'auth-label text-sm',
-                  anchor: 'text-sm',
-                },
-              }}
-              providers={['google']}
-              redirectTo={`${window.location.origin}/dashboard`}
-              view="sign_in"
-              showLinks={true}
-              localization={{
-                variables: {
-                  sign_in: {
-                    email_label: 'Email address',
-                    password_label: 'Password',
-                    button_label: 'Sign In',
-                    social_provider_text: 'Continue with {{provider}}',
-                    link_text: "Don't have an account? Sign up",
-                  },
-                  sign_up: {
-                    email_label: 'Email address',
-                    password_label: 'Create a password',
-                    button_label: 'Sign Up',
-                    social_provider_text: 'Continue with {{provider}}',
-                    link_text: 'Already have an account? Sign in',
-                  },
-                },
-              }}
-            />
+          <CardContent className="space-y-4">
+            <Button
+              variant="outline"
+              className="w-full bg-[#334155] border-[#475569] text-white gap-2"
+              onClick={handleGoogleSignIn}
+              data-testid="button-google-auth"
+            >
+              <SiGoogle className="w-4 h-4" />
+              Continue with Google
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full bg-[#475569]" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[#1e293b] px-2 text-gray-500">or</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-300 text-sm">
+                  Email address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  className="bg-[#1e293b] border-[#475569] text-white placeholder:text-[#64748b] focus:border-[#94a3b8]"
+                  data-testid="input-email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-300 text-sm">
+                  {authView === 'sign_up' ? 'Create a password' : 'Password'}
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  required
+                  minLength={6}
+                  className="bg-[#1e293b] border-[#475569] text-white placeholder:text-[#64748b] focus:border-[#94a3b8]"
+                  data-testid="input-password"
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-400" data-testid="text-auth-error">{error}</p>
+              )}
+
+              {message && (
+                <p className="text-sm text-green-400" data-testid="text-auth-message">{message}</p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-white text-[#0f172a] font-medium"
+                data-testid="button-auth-submit"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : authView === 'sign_up' ? (
+                  'Sign Up'
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            <p className="text-center text-sm text-gray-400">
+              {authView === 'sign_up' ? (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={toggleView}
+                    className="text-gray-300 underline underline-offset-2"
+                    data-testid="button-toggle-sign-in"
+                  >
+                    Sign in
+                  </button>
+                </>
+              ) : (
+                <>
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={toggleView}
+                    className="text-gray-300 underline underline-offset-2"
+                    data-testid="button-toggle-sign-up"
+                  >
+                    Sign up
+                  </button>
+                </>
+              )}
+            </p>
           </CardContent>
         </Card>
       </div>
