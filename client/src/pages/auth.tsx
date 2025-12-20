@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Leaf, Loader2 } from 'lucide-react';
 import { SiGoogle } from 'react-icons/si';
 import { Link } from 'wouter';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import Footer from '@/components/footer';
 
 type AuthView = 'sign_in' | 'sign_up';
 
@@ -101,36 +102,36 @@ export default function AuthPage() {
 
   if (loading || clientLoading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-        <div className="animate-pulse text-white">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-foreground">Loading...</div>
       </div>
     );
   }
 
   if (!supabaseClient) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-        <div className="text-red-400">Failed to initialize authentication. Please refresh the page.</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-destructive">Failed to initialize authentication. Please refresh the page.</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="p-4 md:p-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-white" data-testid="link-auth-logo">
-          <Sparkles className="w-6 h-6" />
+        <Link href="/" className="inline-flex items-center gap-2 text-foreground" data-testid="link-auth-logo">
+          <Leaf className="w-6 h-6 text-primary" />
           <span className="font-semibold text-lg tracking-tight">GrowthPortal</span>
         </Link>
       </header>
 
       <div className="flex-1 flex items-center justify-center px-4 pb-16">
-        <Card className="w-full max-w-md bg-[#1e293b] border-white/10" data-testid="card-auth">
+        <Card className="w-full max-w-md bg-card border-border" data-testid="card-auth">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl font-bold text-white" data-testid="text-auth-title">
+            <CardTitle className="text-2xl font-bold text-foreground" data-testid="text-auth-title">
               {authView === 'sign_up' ? 'Create Account' : 'Welcome Back'}
             </CardTitle>
-            <CardDescription className="text-gray-400">
+            <CardDescription>
               {authView === 'sign_up' 
                 ? 'Sign up to start your growth journey' 
                 : 'Sign in to continue your growth journey'}
@@ -139,7 +140,7 @@ export default function AuthPage() {
           <CardContent className="space-y-4">
             <Button
               variant="outline"
-              className="w-full bg-[#334155] border-[#475569] text-white gap-2"
+              className="w-full gap-2"
               onClick={handleGoogleSignIn}
               data-testid="button-google-auth"
             >
@@ -149,16 +150,16 @@ export default function AuthPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full bg-[#475569]" />
+                <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#1e293b] px-2 text-gray-500">or</span>
+                <span className="bg-card px-2 text-muted-foreground">or</span>
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-300 text-sm">
+                <Label htmlFor="email" className="text-sm">
                   Email address
                 </Label>
                 <Input
@@ -168,13 +169,12 @@ export default function AuthPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="bg-[#1e293b] border-[#475569] text-white placeholder:text-[#64748b] focus:border-[#94a3b8]"
                   data-testid="input-email"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-300 text-sm">
+                <Label htmlFor="password" className="text-sm">
                   {authView === 'sign_up' ? 'Create a password' : 'Password'}
                 </Label>
                 <Input
@@ -185,23 +185,22 @@ export default function AuthPage() {
                   placeholder="Your password"
                   required
                   minLength={6}
-                  className="bg-[#1e293b] border-[#475569] text-white placeholder:text-[#64748b] focus:border-[#94a3b8]"
                   data-testid="input-password"
                 />
               </div>
 
               {error && (
-                <p className="text-sm text-red-400" data-testid="text-auth-error">{error}</p>
+                <p className="text-sm text-destructive" data-testid="text-auth-error">{error}</p>
               )}
 
               {message && (
-                <p className="text-sm text-green-400" data-testid="text-auth-message">{message}</p>
+                <p className="text-sm text-green-600" data-testid="text-auth-message">{message}</p>
               )}
 
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-white text-[#0f172a] font-medium"
+                className="w-full font-medium"
                 data-testid="button-auth-submit"
               >
                 {isSubmitting ? (
@@ -214,14 +213,14 @@ export default function AuthPage() {
               </Button>
             </form>
 
-            <p className="text-center text-sm text-gray-400">
+            <p className="text-center text-sm text-muted-foreground">
               {authView === 'sign_up' ? (
                 <>
                   Already have an account?{' '}
                   <button
                     type="button"
                     onClick={toggleView}
-                    className="text-gray-300 underline underline-offset-2"
+                    className="text-primary underline underline-offset-2"
                     data-testid="button-toggle-sign-in"
                   >
                     Sign in
@@ -233,7 +232,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     onClick={toggleView}
-                    className="text-gray-300 underline underline-offset-2"
+                    className="text-primary underline underline-offset-2"
                     data-testid="button-toggle-sign-up"
                   >
                     Sign up
@@ -244,6 +243,8 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
+      
+      <Footer />
     </div>
   );
 }

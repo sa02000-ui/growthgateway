@@ -1,7 +1,7 @@
 # Design Guidelines: Personality & Growth Portal
 
 ## Design Approach
-**Linear-Style Minimalism** - Clean, professional interface with generous whitespace, crisp borders, and focus on clarity over decoration.
+**Clean Growth Aesthetic** - Professional, organic interface with earth tones, generous whitespace, and focus on clarity over decoration.
 
 ## Core Design Elements
 
@@ -14,13 +14,15 @@
   - UI Labels: text-sm, font-medium
 
 ### Color Palette
-- **Primary**: Navy Blue (#0f172a) - backgrounds, primary text
-- **Accent**: Cream/White (#fefefe) - content cards, alternating sections
-- **Borders**: rgba(255,255,255,0.1) for dark backgrounds, rgba(15,23,42,0.1) for light
-- **Interactive States**: Use opacity variations (hover: opacity-90, active: opacity-80)
+- **Primary**: Sage Green (#4f7942 / hsl 93 28% 36%) - buttons, active states, icons
+- **Background**: Warm Cream (#fdfbf7 / hsl 40 33% 98%) - main backgrounds
+- **Card**: Light Cream (#faf8f5 / hsl 40 30% 97%) - card backgrounds
+- **Foreground**: Charcoal (#2d2a26 / hsl 30 10% 15%) - primary text
+- **Muted**: Earth Gray (hsl 30 8% 45%) - secondary text
+- **Borders**: Warm Gray (hsl 40 15% 88%) - subtle borders
 
 ### Layout System
-- **Spacing Units**: Tailwind's 4, 8, 12, 16, 24 for consistency (p-4, p-8, p-12, p-16, p-24)
+- **Spacing Units**: Tailwind's 4, 6, 8, 12, 16, 24 for consistency
 - **Container**: max-w-7xl with px-4 md:px-8
 - **Section Padding**: py-16 md:py-24 for generous vertical breathing room
 - **Card Spacing**: p-6 md:p-8 with rounded-lg borders
@@ -29,61 +31,57 @@
 
 ### Landing Page
 **Hero Section**:
-- Full viewport height (min-h-screen) with centered content
-- Navy blue background (#0f172a)
-- Large, bold headline emphasizing the value proposition
-- Subheading with cream text (text-gray-200)
-- Single prominent CTA button (Shadcn Button component) with backdrop-blur-sm if over imagery
-- Optional: Subtle gradient overlay or geometric pattern background
+- Gradient background from primary/5 to background
+- Large, bold headline with foreground text
+- Subheading with muted-foreground
+- Single prominent CTA button (primary variant)
+- Leaf icon branding
 
-**Additional Sections** (2-3 recommended):
+**Additional Sections**:
 - Features grid: 3-column on desktop (grid-cols-1 md:grid-cols-3)
-- How It Works: Visual timeline or step-by-step cards
-- CTA section: Cream background with navy text for contrast
-
-### Authentication
-- Centered card layout (max-w-md) on navy background
-- Supabase Auth UI component with custom styling to match Linear aesthetic
-- Clean input fields with subtle borders (border-gray-700)
-- OAuth buttons with icon + text, full width
-- Minimal decoration, focus on clarity
+- Cards with bg-card, border-border
+- Primary/10 backgrounds for icon containers
 
 ### Dashboard Layout
 **Sidebar**:
-- Fixed left sidebar (w-64) with navy background
-- Navigation items: hover:bg-white/5, active:bg-white/10
-- Clean icons from Lucide React
-- Subtle dividers between sections (border-gray-800)
+- Warm cream background (bg-sidebar)
+- Charcoal text (text-sidebar-foreground)
+- Active items: bg-primary with primary-foreground text
+- Leaf icon branding
 
 **Main Content**:
-- Cream/white background (#fefefe)
-- Content cards with shadow-sm and rounded-lg
+- Cream background (bg-background)
+- Content cards with bg-card and border-border
 - Generous padding (p-6 md:p-8)
 
-**Radar Chart ("Perception Gap")**:
-- Centered in card with p-8
-- Chart height: 400px on desktop, 300px mobile
-- Four datasets with distinct colors:
-  - Self: Blue (#3b82f6)
-  - Desired: Green (#10b981)
-  - Peer: Purple (#8b5cf6)
-  - Actual: Orange (#f59e0b)
-- Legend below chart with subtle background
-- "Coming Soon" tooltip on hover with backdrop-blur
+**Charts**:
+- Radar Chart: Current snapshot with primary color fill
+- Timeline Line Chart: Five trait colors
+  - Neuroticism: #ef4444 (red)
+  - Extraversion: #3b82f6 (blue)
+  - Openness: #8b5cf6 (purple)
+  - Agreeableness: #10b981 (green)
+  - Conscientiousness: #f59e0b (orange)
+
+### Footer
+- Border-t with border-border
+- Background: muted/30
+- Links to Terms page
+- Brief disclaimer text
 
 ## Component Library (Shadcn UI)
 **Required Components**:
-- Button (primary, secondary, ghost variants)
-- Card (with CardHeader, CardContent)
-- Input (for forms)
-- Separator (for dividers)
-- Tooltip (for "coming soon" indicators)
+- Button (primary, secondary, ghost, outline variants)
+- Card (with CardHeader, CardContent, CardDescription)
+- Badge (for data point counts)
 - Avatar (for user profiles)
+- Separator (for dividers)
+- Tooltip (for information)
 
 ## Mobile Responsiveness
 - Sidebar: Collapse to hamburger menu on mobile (<768px)
 - Hero text: Scale down from text-6xl to text-4xl
-- Chart: Reduce height to 300px, adjust legend positioning
+- Charts: Side-by-side on lg:, stacked on mobile
 - Grid layouts: Stack to single column on mobile
 - Touch-friendly targets: min 44px height for interactive elements
 
@@ -91,12 +89,9 @@
 **Minimal & Purposeful**:
 - Sidebar navigation: transition-colors duration-200
 - Button states: Built-in Shadcn transitions
-- Page transitions: Simple fade-in (animate-in fade-in-0)
+- Loading states: animate-spin on Loader2 icon
 - Avoid heavy scroll-based or continuous animations
-
-## Images
-**Hero Section**: Optional abstract visualization of "perception gap" concept (overlapping circles, radar visualization, or professional stock imagery representing self-reflection). If used, apply dark overlay (bg-gradient-to-b from-transparent to-navy-900/50) for text readability.
 
 ---
 
-**Design Principle**: Every element should feel intentional. Linear's aesthetic thrives on restraint—use whitespace as a design element, maintain crisp boundaries, and let content breathe. Professional, not playful.
+**Design Principle**: Every element should feel intentional and organic. The sage green and earth tones create a calming, growth-focused environment. Use whitespace generously, maintain clean boundaries, and let content breathe. Professional, supportive, not clinical.

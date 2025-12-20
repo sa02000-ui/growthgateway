@@ -13,14 +13,14 @@ import {
   SidebarGroup,
   SidebarGroupContent
 } from '@/components/ui/sidebar';
-import { Home, ClipboardList, Users, UsersRound, LogOut, Sparkles } from 'lucide-react';
+import { Home, ClipboardList, Users, UsersRound, LogOut, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import HomeTab from '@/components/dashboard/home-tab';
 import AssessmentsTab from '@/components/dashboard/assessments-tab';
 import PeerFeedbackTab from '@/components/dashboard/peer-feedback-tab';
 import FamilyTeamsTab from '@/components/dashboard/family-teams-tab';
+import Footer from '@/components/footer';
 
 const navItems = [
   { title: 'Home', icon: Home, href: '/dashboard' },
@@ -41,8 +41,8 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fefefe] flex items-center justify-center">
-        <div className="animate-pulse text-[#0f172a]">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-foreground">Loading...</div>
       </div>
     );
   }
@@ -61,12 +61,12 @@ export default function Dashboard() {
 
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-      <div className="flex h-screen w-full bg-[#fefefe]">
-        <Sidebar className="border-r border-[#0f172a]/10 bg-[#0f172a]">
-          <SidebarHeader className="p-4 border-b border-white/10">
+      <div className="flex h-screen w-full bg-background">
+        <Sidebar className="border-r border-sidebar-border bg-sidebar">
+          <SidebarHeader className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-white" />
-              <span className="text-white font-semibold text-lg tracking-tight">GrowthPortal</span>
+              <Leaf className="w-6 h-6 text-primary" />
+              <span className="text-sidebar-foreground font-semibold text-lg tracking-tight">GrowthPortal</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="p-2">
@@ -81,7 +81,7 @@ export default function Dashboard() {
                         <SidebarMenuButton 
                           asChild
                           isActive={isActive}
-                          className="text-gray-300 data-[active=true]:bg-white/10 data-[active=true]:text-white"
+                          className="text-sidebar-foreground/70 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
                         >
                           <a href={item.href} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
                             <item.icon className="w-4 h-4" />
@@ -95,24 +95,24 @@ export default function Dashboard() {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <div className="mt-auto p-4 border-t border-white/10">
+          <div className="mt-auto p-4 border-t border-sidebar-border">
             <div className="flex items-center gap-3 mb-3">
               <Avatar className="w-8 h-8">
                 <AvatarImage src={user.user_metadata?.avatar_url} />
-                <AvatarFallback className="bg-white/10 text-white text-xs">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{userName}</p>
-                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
             </div>
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={signOut}
-              className="w-full justify-start text-gray-400 gap-2"
+              className="w-full justify-start text-muted-foreground gap-2"
               data-testid="button-sign-out"
             >
               <LogOut className="w-4 h-4" />
@@ -122,20 +122,23 @@ export default function Dashboard() {
         </Sidebar>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 border-b border-[#0f172a]/10 flex items-center justify-between gap-4 px-4 bg-white">
-            <SidebarTrigger data-testid="button-sidebar-toggle" className="text-[#0f172a]" />
+          <header className="h-14 border-b border-border flex items-center justify-between gap-4 px-4 bg-card">
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="text-foreground" />
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Welcome back,</span>
-              <span className="text-sm font-medium text-[#0f172a]">{userName}</span>
+              <span className="text-sm text-muted-foreground">Welcome back,</span>
+              <span className="text-sm font-medium text-foreground">{userName}</span>
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6 md:p-8">
-            <Switch>
-              <Route path="/dashboard" component={HomeTab} />
-              <Route path="/dashboard/assessments" component={AssessmentsTab} />
-              <Route path="/dashboard/feedback" component={PeerFeedbackTab} />
-              <Route path="/dashboard/teams" component={FamilyTeamsTab} />
-            </Switch>
+          <main className="flex-1 overflow-auto">
+            <div className="p-6 md:p-8">
+              <Switch>
+                <Route path="/dashboard" component={HomeTab} />
+                <Route path="/dashboard/assessments" component={AssessmentsTab} />
+                <Route path="/dashboard/feedback" component={PeerFeedbackTab} />
+                <Route path="/dashboard/teams" component={FamilyTeamsTab} />
+              </Switch>
+            </div>
+            <Footer />
           </main>
         </div>
       </div>

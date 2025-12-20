@@ -60,10 +60,11 @@ Required secrets in Replit Secrets:
 - `SUPABASE_KEY`: Your Supabase anon/public key
 
 ## Design Theme
-- **Primary**: Navy Blue (#0f172a)
-- **Secondary**: Cream/White (#fefefe)
+- **Primary**: Sage Green (#4f7942 / hsl 93 28% 36%)
+- **Background**: Warm Cream (#fdfbf7)
+- **Foreground**: Charcoal (#2d2a26)
 - **Font**: Inter
-- **Style**: Linear-style minimalism with crisp borders and generous whitespace
+- **Style**: Clean Growth aesthetic with earth tones, generous whitespace
 
 ## Running the App
 The app runs on port 5000 via the "Start application" workflow:
@@ -80,5 +81,7 @@ npm run dev
 - `GET /api/assessment/result/:resultId` - Get single assessment result
 
 ## Recent Changes
+- 2024-12-20: UI polish - Sage Green theme, Footer with Terms page, improved sidebar
+- 2024-12-20: Added Timeline View with Line Chart and Growth Comparison feature
 - 2024-12-20: Added IPIP-NEO-120 personality assessment with scoring engine and results storage
 - 2024-12-20: Initial MVP with landing, auth, and dashboard pages
