@@ -9,9 +9,22 @@ import { Label } from '@/components/ui/label';
 import { ClipboardList, Play, Clock, CheckCircle2, ArrowLeft, ArrowRight, Brain, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { questions, likertScale, traitNames, type TraitKey } from '@shared/ipip-neo-120';
+import questionsData from '@/data/questions.json';
 import { getCompletionPercentage, getTraitInterpretation } from '@shared/scoring';
 import type { TraitScores, AssessmentResponses } from '@shared/schema';
+
+type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
+
+interface Question {
+  id: number;
+  text: string;
+  trait: TraitKey;
+  keyed: '+' | '-';
+}
+
+const questions = questionsData.questions as Question[];
+const likertScale = questionsData.likertScale;
+const traitNames = questionsData.traitNames as Record<TraitKey, string>;
 
 type AssessmentState = 'list' | 'taking' | 'results';
 
