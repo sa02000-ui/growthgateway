@@ -4,7 +4,8 @@ import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users, Bug } from 'lucide-react';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { 
   LineChart, 
   Line, 
@@ -179,6 +180,27 @@ export default function HomeTab() {
     }
   };
 
+  const [injecting, setInjecting] = useState(false);
+
+  const injectTestData = async () => {
+    if (!user?.id) return;
+    setInjecting(true);
+    try {
+      const response = await apiRequest('POST', '/api/debug/inject-test-data', { userId: user.id });
+      const data = await response.json();
+      if (data.success) {
+        alert('Test data injected! Scores: O:80, C:40, E:70, A:60, N:30');
+        queryClient.invalidateQueries({ queryKey: ['/api/assessment/results', user.id] });
+      } else {
+        alert('Error: ' + (data.message || data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      alert('Failed to inject test data: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setInjecting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -190,13 +212,26 @@ export default function HomeTab() {
   if (results.length === 0) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight" data-testid="text-dashboard-title">
-            Welcome to GrowthPortal
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Your journey to self-discovery starts here
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight" data-testid="text-dashboard-title">
+              Welcome to GrowthPortal
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Your journey to self-discovery starts here
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={injectTestData}
+            disabled={injecting}
+            className="gap-2 text-xs"
+            data-testid="button-debug-inject-empty"
+          >
+            <Bug className="w-3 h-3" />
+            {injecting ? 'Injecting...' : 'Debug: Inject Test Data'}
+          </Button>
         </div>
 
         <Card className="bg-card border-border">
@@ -294,13 +329,26 @@ export default function HomeTab() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight" data-testid="text-dashboard-title">
-          Your Growth Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Track your Big Five personality traits over time
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight" data-testid="text-dashboard-title">
+            Your Growth Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your Big Five personality traits over time
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={injectTestData}
+          disabled={injecting}
+          className="gap-2 text-xs"
+          data-testid="button-debug-inject"
+        >
+          <Bug className="w-3 h-3" />
+          {injecting ? 'Injecting...' : 'Debug: Inject Test Data'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

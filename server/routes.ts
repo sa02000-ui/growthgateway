@@ -270,5 +270,58 @@ export async function registerRoutes(
     }
   });
 
+  // DEBUG: Inject test data (temporary endpoint for testing)
+  app.post("/api/debug/inject-test-data", async (req, res) => {
+    try {
+      const { userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+
+      const testScores = { O: 80, C: 40, E: 70, A: 60, N: 30 };
+      const mockResponses: Record<string, number> = {};
+      for (let i = 1; i <= 120; i++) {
+        mockResponses[i.toString()] = 3;
+      }
+
+      const { data, error } = await supabase
+        .from('results_log')
+        .insert({
+          user_id: userId,
+          assessment_type: 'IPIP-NEO-120',
+          responses: mockResponses,
+          scores: testScores,
+          neuroticism_score: testScores.N,
+          extraversion_score: testScores.E,
+          openness_score: testScores.O,
+          agreeableness_score: testScores.A,
+          conscientiousness_score: testScores.C,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Debug inject error - Full details:', JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          userId: userId
+        }, null, 2));
+        return res.status(500).json({ 
+          error: "Failed to inject test data",
+          code: error.code,
+          message: error.message
+        });
+      }
+
+      res.json({ success: true, resultId: data.id, scores: testScores });
+    } catch (error) {
+      console.error('Debug inject error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }
