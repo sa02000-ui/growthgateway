@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users, Bug } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import AIInsightCard from './ai-insight-card';
 import { 
   LineChart, 
   Line, 
@@ -226,7 +227,27 @@ export default function HomeTab() {
     },
   ] : [];
 
-  const feedbackUrl = user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
+  const [feedbackToken, setFeedbackToken] = useState<string | null>(null);
+  
+  useEffect(() => {
+    async function fetchToken() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/my-feedback-token/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setFeedbackToken(data.token);
+        }
+      } catch (err) {
+        console.log('Failed to fetch feedback token');
+      }
+    }
+    fetchToken();
+  }, [user?.id]);
+
+  const feedbackUrl = feedbackToken 
+    ? `${window.location.origin}/feedback/${feedbackToken}` 
+    : user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
 
   const copyLink = async () => {
     try {
@@ -437,6 +458,9 @@ export default function HomeTab() {
           </Card>
         ))}
       </div>
+
+      {/* AI Insight Card */}
+      <AIInsightCard />
 
       {/* Invite Peers Section */}
       <Card className="bg-card border-border" data-testid="card-invite-peers">

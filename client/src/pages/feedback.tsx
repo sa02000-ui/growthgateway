@@ -30,22 +30,42 @@ const likertScale = [
 type FeedbackState = 'intro' | 'taking' | 'identity' | 'success';
 
 export default function FeedbackPage() {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId: tokenOrId } = useParams<{ userId: string }>();
   const [state, setState] = useState<FeedbackState>('intro');
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(0);
   const [peerName, setPeerName] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
 
   const questionsPerPage = 10;
+
+  useEffect(() => {
+    async function resolveToken() {
+      if (!tokenOrId) return;
+      
+      try {
+        const res = await fetch(`/api/feedback-token/${tokenOrId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setResolvedUserId(data.userId);
+          return;
+        }
+      } catch (err) {
+        console.log('Token resolution failed');
+      }
+      setResolvedUserId(tokenOrId);
+    }
+    resolveToken();
+  }, [tokenOrId]);
 
   const { data: questionsData, isLoading: questionsLoading } = useQuery<{ questions: Question[] }>({
     queryKey: ['/api/peer-feedback/questions'],
   });
 
   const { data: userData, isLoading: userLoading } = useQuery<{ userName: string; userId: string }>({
-    queryKey: ['/api/peer-feedback/user', userId],
-    enabled: !!userId,
+    queryKey: ['/api/peer-feedback/user', resolvedUserId],
+    enabled: !!resolvedUserId,
   });
 
   const questions = questionsData?.questions || [];
@@ -54,7 +74,7 @@ export default function FeedbackPage() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: { responses: Record<string, number>; peerName: string | null; isAnonymous: boolean }) => {
-      const res = await apiRequest('POST', `/api/peer-feedback/${userId}`, data);
+      const res = await apiRequest('POST', `/api/peer-feedback/${resolvedUserId}`, data);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || `Server error: ${res.status}`);
@@ -99,7 +119,7 @@ export default function FeedbackPage() {
     });
   };
 
-  if (questionsLoading || userLoading) {
+  if (questionsLoading || userLoading || !resolvedUserId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -107,7 +127,7 @@ export default function FeedbackPage() {
     );
   }
 
-  if (!userId || (userData === undefined && !userLoading)) {
+  if (!resolvedUserId || (userData === undefined && !userLoading)) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <header className="p-4 md:p-8 border-b border-border">

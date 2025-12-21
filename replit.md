@@ -36,7 +36,10 @@ server/
 ├── db.ts                # Supabase server-side client
 ├── routes.ts            # API routes
 ├── index.ts             # Express server entry
-└── storage.ts           # Storage interface
+├── storage.ts           # Storage interface
+├── ai-insights.ts       # AI-powered growth insights using OpenAI
+├── feedback-tokens.ts   # Secure token generation for feedback URLs
+└── replit_integrations/ # AI integration utilities
 ```
 
 ## Key Features
@@ -54,10 +57,14 @@ server/
 6. **My Profile**: Demographic tracking (marital status, cultural background, profession, education, income, parental context)
 7. **Life Events Log**: Track major life events (new job, relocation, marriage, divorce, etc.)
 8. **Privacy Protection**: "Threshold of 3" rule - peer feedback names hidden until 3+ responses received
+9. **AI-Powered Growth Insights**: Personalized 3-sentence growth recommendations from AI (Senior I-O Psychologist persona)
+10. **Secure Feedback Tokens**: Privacy-preserving URL tokens (e.g., /feedback/ax79-k2-rt) instead of raw user IDs
+11. **Explore Tab**: Categorized test library with scientific validation badges (Core Personality, Behavioral & Social, Cognitive & Productivity, Well-being & Resilience)
 
 ## Shared Modules
 - `shared/ipip-neo-120.ts` - All 120 questions with trait assignments and +/- keying
 - `shared/scoring.ts` - Scoring logic for calculating Big Five trait percentages
+- `shared/models/chat.ts` - Chat/conversation schema (for AI integrations)
 
 ## Environment Variables
 Required secrets in Replit Secrets:
@@ -88,8 +95,15 @@ npm run dev
 - `GET /api/peer-feedback/user/:userId` - Check if user exists (public, no PII)
 - `POST /api/peer-feedback/:userId` - Submit peer feedback (public)
 - `GET /api/peer-feedback/:userId` - Get all peer feedback with averages (authenticated)
+- `GET /api/ai-insights/:userId` - Get AI-powered personalized growth insights
+- `GET /api/my-feedback-token/:userId` - Get or create secure feedback token
+- `GET /api/feedback-token/:token` - Resolve token to user ID (public)
 
 ## Recent Changes
+- 2024-12-21: Added AI-powered growth insights using OpenAI gpt-4o-mini with Senior I-O Psychologist persona
+- 2024-12-21: Implemented secure feedback token system (privacy-preserving URLs with xxxx-xx-xx format)
+- 2024-12-21: Created Explore tab with categorized test library and scientific validation badges
+- 2024-12-21: Added AI Insight Card to dashboard home showing personalized growth recommendations
 - 2024-12-21: Added profile confirmation dialog before assessments (must confirm profile is current)
 - 2024-12-21: Created comprehensive Profile page with demographic tracking and Life Events Log
 - 2024-12-21: Implemented "Threshold of 3" privacy rule for peer feedback (names hidden until 3+ responses)

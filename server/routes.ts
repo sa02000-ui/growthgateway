@@ -6,11 +6,16 @@ import { calculateAllTraitScores, validateResponses } from "@shared/scoring";
 import { assessmentResponsesSchema, traitScoresSchema } from "@shared/schema";
 import { questions } from "@shared/ipip-neo-120";
 import { peerQuestions, calculatePeerScores } from "@shared/peer-feedback-questions";
+import { registerAIInsightsRoutes } from "./ai-insights";
+import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerAIInsightsRoutes(app);
+  registerFeedbackTokenRoutes(app);
+
   // Supabase configuration endpoint for frontend
   app.get("/api/config", (_req, res) => {
     res.json({

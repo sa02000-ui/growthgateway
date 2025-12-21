@@ -161,3 +161,14 @@ export const lifeEventOptions = [
   { key: 'healthChange', label: 'Significant Health Change' },
   { key: 'retirement', label: 'Retirement' },
 ];
+
+export const feedbackTokens = pgTable("feedback_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  token: varchar("token").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type FeedbackToken = typeof feedbackTokens.$inferSelect;
+
+export * from "./models/chat";
