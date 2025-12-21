@@ -171,4 +171,19 @@ export const feedbackTokens = pgTable("feedback_tokens", {
 
 export type FeedbackToken = typeof feedbackTokens.$inferSelect;
 
+export const profileHistory = pgTable("profile_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertProfileHistorySchema = createInsertSchema(profileHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProfileHistory = z.infer<typeof insertProfileHistorySchema>;
+export type ProfileHistory = typeof profileHistory.$inferSelect;
+
 export * from "./models/chat";

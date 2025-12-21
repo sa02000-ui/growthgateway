@@ -131,7 +131,7 @@ export default function ProfileTab() {
           .from('life_events')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (lifeEventsData) {
           setLifeEvents({
@@ -213,7 +213,18 @@ export default function ProfileTab() {
         password: newPassword,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('reauthentication') || error.message.includes('session')) {
+          toast({
+            title: 'Session expired',
+            description: 'Please sign out and sign back in, then try changing your password again.',
+            variant: 'destructive',
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       toast({
         title: 'Password changed',
@@ -222,11 +233,11 @@ export default function ProfileTab() {
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error changing password:', error);
       toast({
         title: 'Error changing password',
-        description: 'Please try again later.',
+        description: error?.message || 'Please try again later.',
         variant: 'destructive',
       });
     } finally {
@@ -283,12 +294,23 @@ export default function ProfileTab() {
         timestamp: new Date().toISOString(),
       };
 
-      await supabase
-        .from('profile_history')
-        .insert({
-          user_id: user.id,
+      const historyResponse = await fetch('/api/profile-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
           snapshot: snapshot,
+        }),
+      });
+
+      if (!historyResponse.ok) {
+        console.error('Failed to save profile history snapshot');
+        toast({
+          title: 'Profile saved',
+          description: 'Your demographic information has been updated, but the history snapshot could not be recorded.',
         });
+        return;
+      }
 
       toast({
         title: 'Profile saved',

@@ -275,6 +275,43 @@ export async function registerRoutes(
     }
   });
 
+  // Save profile history snapshot
+  app.post("/api/profile-history", async (req, res) => {
+    try {
+      const { userId, snapshot } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+
+      if (!snapshot) {
+        return res.status(400).json({ error: "snapshot is required" });
+      }
+
+      const { data, error } = await supabase
+        .from('profile_history')
+        .insert({
+          user_id: userId,
+          snapshot: snapshot,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Profile history save error:', error);
+        return res.status(500).json({ 
+          error: "Failed to save profile history",
+          message: error.message
+        });
+      }
+
+      res.json({ success: true, historyId: data.id });
+    } catch (error) {
+      console.error('Profile history error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // DEBUG: Inject test data (temporary endpoint for testing)
   app.post("/api/debug/inject-test-data", async (req, res) => {
     try {

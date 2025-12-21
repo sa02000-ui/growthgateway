@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation, Switch, Route } from 'wouter';
+import { useLocation, Switch, Route, Link } from 'wouter';
 import { useAuth } from '@/lib/auth-context';
 import { 
   Sidebar, 
@@ -101,8 +101,8 @@ export default function Dashboard() {
             </SidebarGroup>
           </SidebarContent>
           <div className="mt-auto p-4 border-t border-sidebar-border">
-            <a 
-              href="/dashboard/profile" 
+            <Link 
+              href="/dashboard/profile"
               className="flex items-center gap-3 mb-3 hover-elevate p-2 -m-2 rounded-md cursor-pointer"
               data-testid="link-sidebar-profile"
             >
@@ -116,7 +116,7 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
-            </a>
+            </Link>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -133,14 +133,14 @@ export default function Dashboard() {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 border-b border-border flex items-center justify-between gap-4 px-4 bg-card">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-foreground" />
-            <a 
-              href="/dashboard/profile" 
+            <Link 
+              href="/dashboard/profile"
               className="flex items-center gap-2 hover-elevate px-2 py-1 rounded-md cursor-pointer"
               data-testid="link-header-profile"
             >
               <span className="text-sm text-muted-foreground">Welcome back,</span>
               <span className="text-sm font-medium text-foreground">{userName}</span>
-            </a>
+            </Link>
           </header>
           <main className="flex-1 overflow-auto">
             <div className="p-6 md:p-8">
