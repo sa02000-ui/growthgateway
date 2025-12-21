@@ -13,22 +13,19 @@ import {
   SidebarGroup,
   SidebarGroupContent
 } from '@/components/ui/sidebar';
-import { Home, ClipboardList, Users, UsersRound, LogOut, Leaf, UserCircle } from 'lucide-react';
+import { Home, Users, UsersRound, LogOut, Leaf, UserCircle, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import HomeTab from '@/components/dashboard/home-tab';
-import AssessmentsTab from '@/components/dashboard/assessments-tab';
+import ExploreAssessmentsTab from '@/components/dashboard/explore-assessments-tab';
 import PeerFeedbackTab from '@/components/dashboard/peer-feedback-tab';
 import FamilyTeamsTab from '@/components/dashboard/family-teams-tab';
 import ProfileTab from '@/components/dashboard/profile-tab';
-import ExploreTab from '@/components/dashboard/explore-tab';
 import Footer from '@/components/footer';
-import { Compass } from 'lucide-react';
 
 const navItems = [
   { title: 'Growth Overview', icon: Home, href: '/dashboard' },
-  { title: 'My Assessments', icon: ClipboardList, href: '/dashboard/assessments' },
-  { title: 'Explore', icon: Compass, href: '/dashboard/explore' },
+  { title: 'Explore Assessments', icon: Compass, href: '/dashboard/explore' },
   { title: 'Peer Feedback', icon: Users, href: '/dashboard/feedback' },
   { title: 'Family & Teams', icon: UsersRound, href: '/dashboard/teams' },
   { title: 'My Profile', icon: UserCircle, href: '/dashboard/profile' },
@@ -146,8 +143,7 @@ export default function Dashboard() {
             <div className="p-6 md:p-8">
               <Switch>
                 <Route path="/dashboard" component={HomeTab} />
-                <Route path="/dashboard/assessments" component={AssessmentsTab} />
-                <Route path="/dashboard/explore" component={ExploreTab} />
+                <Route path="/dashboard/explore" component={ExploreAssessmentsTab} />
                 <Route path="/dashboard/feedback" component={PeerFeedbackTab} />
                 <Route path="/dashboard/teams" component={FamilyTeamsTab} />
                 <Route path="/dashboard/profile" component={ProfileTab} />

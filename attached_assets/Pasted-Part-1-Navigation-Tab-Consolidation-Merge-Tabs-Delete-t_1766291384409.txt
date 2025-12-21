@@ -1,0 +1,39 @@
+Part 1: Navigation & Tab Consolidation
+
+Merge Tabs: Delete the 'My Assessments' and 'Explore' tabs. Create a single new tab called 'Explore Assessments'.
+
+Library View: Within 'Explore Assessments', organize tests into the 4 researched categories:
+
+Who Am I? (Core Personality)
+
+How I Think? (Cognitive & Productivity)
+
+How I Interact? (Behavioral & Social)
+
+How I Feel? (Well-being & Resilience)
+
+Unified History: Next to each test in the library, show the user's "Last Taken" date and a "View History" button. If they haven't taken it, show a "Start Assessment" button.
+
+Part 2: Peer Feedback & Guest Access (CRITICAL)
+
+Fix Peer Access: The /feedback/:userId route must allow Unauthenticated Guest Access. Remove any login redirects for this specific route.
+
+Peer UI: Restore the 'Request Peer Feedback' button on the Peer Feedback tab. Ensure it opens a share sheet or copies the secure hash-token link.
+
+3rd Person Translation: Ensure the questions on the peer page are automatically converted to 3rd person (e.g., '[User] tends to...' instead of 'I tend to...').
+
+Part 3: Deep History & UI Hygiene
+
+Landing Page: Update headline to 'Map Your Personal Evolution.' Remove all mentions of 'the gap.' Update the 'How it Works' section to highlight longitudinal tracking.
+
+The 'i' Tooltips: Add hoverable info icons next to sensitive Profile fields (Income, Parental Job, etc.) explaining the research-based reason for asking.
+
+Legal Content: Fully populate the /terms and /privacy pages with the indemnification and non-medical advice text provided in our history.
+
+Assessment Scroll: Implement window.scrollTo(0, 0) when clicking 'Next' in any assessment.
+
+Part 4: Data Integrity
+
+Profile History: Ensure any update to the User Profile (Profession, Income, Status) is saved as a new record in profile_history to allow for correlation with personality changes over time.
+
+Radar Chart: Fix the 'Perspective Alignment' layer. It must pull the average of all peer_feedback for the user and display it as an outline over the self-assessment polygon.

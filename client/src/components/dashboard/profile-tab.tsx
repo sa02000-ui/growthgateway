@@ -7,9 +7,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { User, Briefcase, GraduationCap, Globe, Calendar, Save, Loader2, Mail, Phone, Lock, Settings } from 'lucide-react';
+import { User, Briefcase, GraduationCap, Globe, Calendar, Save, Loader2, Mail, Phone, Lock, Settings, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
+
+const fieldExplanations = {
+  householdIncome: "Research shows income correlates with stress levels and life satisfaction, which can influence personality expression over time.",
+  parentalOccupation: "Studies indicate parental occupation shapes early values and work orientation, providing context for career-related personality traits.",
+  parentalIncome: "Socioeconomic background during childhood is linked to resilience patterns and risk tolerance in adulthood.",
+  culturalBackground: "Cultural context influences how personality traits are expressed and perceived by others.",
+  maritalStatus: "Relationship status can affect social support systems and emotional wellbeing, impacting trait expression.",
+};
 import {
   maritalStatusOptions,
   culturalBackgroundOptions,
@@ -498,7 +507,17 @@ export default function ProfileTab() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="maritalStatus">Marital Status</Label>
+              <Label htmlFor="maritalStatus" className="flex items-center gap-2">
+                Marital Status
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">{fieldExplanations.maritalStatus}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
               <Select 
                 value={profile.maritalStatus} 
                 onValueChange={(value) => setProfile(p => ({ ...p, maritalStatus: value }))}
@@ -515,7 +534,17 @@ export default function ProfileTab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="culturalBackground">Cultural Background</Label>
+              <Label htmlFor="culturalBackground" className="flex items-center gap-2">
+                Cultural Background
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">{fieldExplanations.culturalBackground}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
               <Select 
                 value={profile.culturalBackground} 
                 onValueChange={(value) => setProfile(p => ({ ...p, culturalBackground: value }))}
@@ -579,7 +608,17 @@ export default function ProfileTab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="householdIncome">Household Income</Label>
+              <Label htmlFor="householdIncome" className="flex items-center gap-2">
+                Household Income
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">{fieldExplanations.householdIncome}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
               <Select 
                 value={profile.householdIncome} 
                 onValueChange={(value) => setProfile(p => ({ ...p, householdIncome: value }))}
@@ -626,7 +665,17 @@ export default function ProfileTab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="parentalOccupation">Parent's Primary Occupation</Label>
+              <Label htmlFor="parentalOccupation" className="flex items-center gap-2">
+                Parent's Primary Occupation
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">{fieldExplanations.parentalOccupation}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
               <Input
                 id="parentalOccupation"
                 placeholder="e.g., Teacher"
@@ -637,7 +686,17 @@ export default function ProfileTab() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="parentalIncome">Parent's Income Level (Growing Up)</Label>
+              <Label htmlFor="parentalIncome" className="flex items-center gap-2">
+                Parent's Income Level (Growing Up)
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">{fieldExplanations.parentalIncome}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
               <Select 
                 value={profile.parentalIncome} 
                 onValueChange={(value) => setProfile(p => ({ ...p, parentalIncome: value }))}

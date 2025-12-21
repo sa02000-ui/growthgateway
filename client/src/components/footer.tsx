@@ -16,6 +16,10 @@ export default function Footer() {
               Terms & Disclaimer
             </Link>
             <span className="hidden md:inline text-border">|</span>
+            <Link href="/privacy" className="hover:text-foreground transition-colors" data-testid="link-privacy">
+              Privacy Policy
+            </Link>
+            <span className="hidden md:inline text-border">|</span>
             <span>&copy; {new Date().getFullYear()} GrowthPortal</span>
           </div>
         </div>

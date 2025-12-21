@@ -25,7 +25,27 @@ export default function PeerFeedbackTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const feedbackUrl = user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
+  const [feedbackToken, setFeedbackToken] = useState<string | null>(null);
+  
+  useEffect(() => {
+    async function fetchToken() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/my-feedback-token/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setFeedbackToken(data.token);
+        }
+      } catch (err) {
+        console.log('Failed to fetch feedback token');
+      }
+    }
+    fetchToken();
+  }, [user?.id]);
+
+  const feedbackUrl = feedbackToken 
+    ? `${window.location.origin}/feedback/${feedbackToken}` 
+    : user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
   // Only count feedback with valid scores (completed submissions)
   const completedFeedback = feedbackList.filter(fb => fb.scores && Object.keys(fb.scores).length > 0);
   const completedCount = completedFeedback.length;

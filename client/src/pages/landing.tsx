@@ -28,14 +28,12 @@ export default function Landing() {
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight leading-tight mb-6">
-            Bridge the gap between who you are,{' '}
-            <span className="text-muted-foreground">who you want to be,</span>{' '}
-            and how others see you.
+            Map Your Personal Evolution
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
-            Gain powerful insights into your personality, track your growth journey, 
-            and understand how your self-perception aligns with reality.
+            Track how your personality evolves across life stages. Compare your self-perception 
+            with how others experience you. Build lasting self-awareness over time.
           </p>
           
           <Link href="/auth">
@@ -82,7 +80,7 @@ export default function Landing() {
             Ready to discover your true self?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join thousands of professionals who are using data-driven insights to close their perception gaps.
+            Join thousands of professionals who are using data-driven insights to understand their personal evolution.
           </p>
           <Link href="/auth">
             <Button size="lg" className="font-semibold px-8 gap-2" data-testid="button-cta-start-journey">

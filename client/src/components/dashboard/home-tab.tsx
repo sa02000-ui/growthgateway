@@ -333,7 +333,7 @@ export default function HomeTab() {
               Complete the IPIP-NEO-120 personality assessment to discover your Big Five traits 
               and begin tracking your personal growth journey.
             </p>
-            <Link href="/dashboard/assessments">
+            <Link href="/dashboard/explore">
               <Button size="lg" className="gap-2" data-testid="button-take-first-assessment">
                 <ClipboardList className="w-4 h-4" />
                 Take Your First Assessment
