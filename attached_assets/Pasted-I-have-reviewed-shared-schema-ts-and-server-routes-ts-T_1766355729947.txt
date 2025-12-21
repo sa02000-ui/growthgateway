@@ -1,0 +1,41 @@
+I have reviewed shared/schema.ts and server/routes.ts. There are discrepancies between the UI and the Database.
+
+1. DEMOGRAPHIC UPGRADE (Replace Lazy Lists)
+
+In shared/schema.ts:
+
+Replace culturalBackgroundOptions with this GLOBE Project list: [{ value: 'anglo', label: 'Anglo (e.g., USA, UK)' }, { value: 'latin_europe', label: 'Latin Europe (e.g., France, Italy)' }, { value: 'nordic_europe', label: 'Nordic Europe' }, { value: 'germanic_europe', label: 'Germanic Europe' }, { value: 'eastern_europe', label: 'Eastern Europe' }, { value: 'latin_america', label: 'Latin America' }, { value: 'sub_saharan_africa', label: 'Sub-Saharan Africa' }, { value: 'middle_east', label: 'Middle East / Arab' }, { value: 'southern_asia', label: 'Southern Asia' }, { value: 'confucian_asia', label: 'Confucian Asia' }, { value: 'indigenous', label: 'Indigenous / First Nations' }]
+
+Add educationFieldOptions: Use ISCED broad fields (Engineering, Health, Arts, Business, etc.).
+
+Update userProfiles table:
+
+Add column children_count (integer).
+
+Add column youngest_child_age (varchar).
+
+Add column birth_country (varchar).
+
+Add column years_in_region (varchar - currently integer, change to range enum).
+
+2. CREATE MISSING TABLES (Family & Teams)
+
+In shared/schema.ts, define two new tables:
+
+groups: id, name, type (enum: 'family', 'team', 'work'), privacy_level (enum: 'open', 'anonymous'), created_by (user_id).
+
+group_members: id, group_id, user_id, role (enum: 'admin', 'member'), joined_at.
+
+In server/routes.ts, create the API endpoints to Create Group, Invite Member, and List Groups.
+
+3. FIX GUEST ACCESS (Middleware)
+
+The feedback_tokens table exists, but the route is blocked.
+
+Update middleware.ts (or your auth router) to whitelist /feedback/* so it does not require a login session.
+
+4. OBSERVER FORM LOGIC
+
+In server/routes.ts, update the GET /api/peer-feedback/questions endpoint.
+
+Do not serve the self-report questions. Serve a modified JSON where 'I am' is replaced with 'This person is' (or load the official Observer form if available).

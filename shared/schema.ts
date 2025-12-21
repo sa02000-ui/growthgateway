@@ -73,11 +73,15 @@ export const userProfiles = pgTable("user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   maritalStatus: varchar("marital_status"),
-  yearsInCurrentRegion: integer("years_in_current_region"),
+  childrenCount: integer("children_count"),
+  youngestChildAge: varchar("youngest_child_age"),
+  birthCountry: varchar("birth_country"),
+  yearsInRegion: varchar("years_in_region"),
   culturalBackground: varchar("cultural_background"),
   profession: varchar("profession"),
   industry: varchar("industry"),
   educationLevel: varchar("education_level"),
+  fieldOfStudy: varchar("field_of_study"),
   householdIncome: varchar("household_income"),
   parentalOccupation: varchar("parental_occupation"),
   parentalIncome: varchar("parental_income"),
@@ -127,9 +131,19 @@ export const maritalStatusOptions = [
 ];
 
 export const culturalBackgroundOptions = [
-  { value: 'eastern', label: 'Eastern' },
-  { value: 'western', label: 'Western' },
-  { value: 'mixed', label: 'Mixed/Multicultural' },
+  { value: 'anglo', label: 'Anglo (e.g., USA, UK, Australia)' },
+  { value: 'latin_europe', label: 'Latin Europe (e.g., France, Italy, Spain)' },
+  { value: 'nordic_europe', label: 'Nordic Europe (e.g., Sweden, Denmark, Finland)' },
+  { value: 'germanic_europe', label: 'Germanic Europe (e.g., Germany, Austria, Netherlands)' },
+  { value: 'eastern_europe', label: 'Eastern Europe (e.g., Poland, Russia, Hungary)' },
+  { value: 'latin_america', label: 'Latin America (e.g., Mexico, Brazil, Argentina)' },
+  { value: 'sub_saharan_africa', label: 'Sub-Saharan Africa (e.g., Nigeria, Kenya, South Africa)' },
+  { value: 'middle_east', label: 'Middle East (e.g., Saudi Arabia, UAE, Egypt)' },
+  { value: 'southern_asia', label: 'Southern Asia (e.g., India, Pakistan, Bangladesh)' },
+  { value: 'confucian_asia', label: 'Confucian Asia (e.g., China, Japan, South Korea)' },
+  { value: 'southeast_asia', label: 'Southeast Asia (e.g., Thailand, Vietnam, Philippines)' },
+  { value: 'mixed_multicultural', label: 'Mixed / Multicultural Background' },
+  { value: 'other', label: 'Other' },
 ];
 
 export const educationLevelOptions = [
@@ -149,6 +163,27 @@ export const incomeOptions = [
   { value: '100k_150k', label: '$100,000 - $150,000' },
   { value: '150k_200k', label: '$150,000 - $200,000' },
   { value: 'over_200k', label: 'Over $200,000' },
+];
+
+export const yearsInRegionOptions = [
+  { value: 'less_than_1', label: 'Less than 1 year' },
+  { value: '1_to_2', label: '1-2 years' },
+  { value: '3_to_5', label: '3-5 years' },
+  { value: '6_to_10', label: '6-10 years' },
+  { value: '11_to_20', label: '11-20 years' },
+  { value: 'more_than_20', label: 'More than 20 years' },
+  { value: 'entire_life', label: 'Entire life' },
+];
+
+export const youngestChildAgeOptions = [
+  { value: 'infant', label: 'Infant (0-1)' },
+  { value: 'toddler', label: 'Toddler (2-3)' },
+  { value: 'preschool', label: 'Preschool (4-5)' },
+  { value: 'elementary', label: 'Elementary (6-11)' },
+  { value: 'middle_school', label: 'Middle School (12-14)' },
+  { value: 'high_school', label: 'High School (15-18)' },
+  { value: 'adult', label: 'Adult (19+)' },
+  { value: 'not_applicable', label: 'Not Applicable' },
 ];
 
 export const lifeEventOptions = [
@@ -195,21 +230,18 @@ export const occupationCategories = [
 ];
 
 export const fieldOfStudyOptions = [
-  { value: 'engineering', label: 'Engineering' },
-  { value: 'computer_science', label: 'Computer Science / IT' },
-  { value: 'business', label: 'Business / Management' },
-  { value: 'medicine_health', label: 'Medicine / Health Sciences' },
-  { value: 'law', label: 'Law / Legal Studies' },
   { value: 'education', label: 'Education' },
   { value: 'arts_humanities', label: 'Arts & Humanities' },
-  { value: 'social_sciences', label: 'Social Sciences' },
-  { value: 'natural_sciences', label: 'Natural Sciences' },
-  { value: 'mathematics', label: 'Mathematics / Statistics' },
-  { value: 'architecture', label: 'Architecture / Design' },
-  { value: 'agriculture', label: 'Agriculture / Environmental' },
-  { value: 'communications', label: 'Communications / Media' },
-  { value: 'trades', label: 'Trades / Vocational' },
-  { value: 'not_applicable', label: 'Not Applicable' },
+  { value: 'social_sciences', label: 'Social Sciences, Journalism & Information' },
+  { value: 'business_admin_law', label: 'Business, Administration & Law' },
+  { value: 'natural_sciences', label: 'Natural Sciences, Mathematics & Statistics' },
+  { value: 'ict', label: 'Information & Communication Technologies (ICT)' },
+  { value: 'engineering_manufacturing', label: 'Engineering, Manufacturing & Construction' },
+  { value: 'agriculture_forestry', label: 'Agriculture, Forestry, Fisheries & Veterinary' },
+  { value: 'health_welfare', label: 'Health & Welfare' },
+  { value: 'services', label: 'Services (Tourism, Transport, Security, etc.)' },
+  { value: 'generic_programs', label: 'Generic Programs (Basic & Literacy)' },
+  { value: 'not_applicable', label: 'Not Applicable / No Formal Education' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -266,6 +298,60 @@ export const feedbackTokens = pgTable("feedback_tokens", {
 });
 
 export type FeedbackToken = typeof feedbackTokens.$inferSelect;
+
+export const groups = pgTable("groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  type: varchar("type").notNull().default('team'),
+  privacyLevel: varchar("privacy_level").notNull().default('anonymous'),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGroupSchema = createInsertSchema(groups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type Group = typeof groups.$inferSelect;
+
+export const groupMembers = pgTable("group_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull(),
+  userId: varchar("user_id"),
+  email: varchar("email"),
+  name: varchar("name"),
+  role: varchar("role").notNull().default('member'),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const insertGroupMemberSchema = createInsertSchema(groupMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+export type InsertGroupMember = z.infer<typeof insertGroupMemberSchema>;
+export type GroupMember = typeof groupMembers.$inferSelect;
+
+export const groupTypeOptions = [
+  { value: 'family', label: 'Family' },
+  { value: 'team', label: 'Team' },
+  { value: 'work', label: 'Work' },
+  { value: 'friends', label: 'Friends' },
+];
+
+export const groupPrivacyOptions = [
+  { value: 'open', label: 'Open (Members can see each other)' },
+  { value: 'anonymous', label: 'Anonymous (Members hidden until threshold)' },
+];
+
+export const groupRoleOptions = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'member', label: 'Member' },
+];
 
 export const profileHistory = pgTable("profile_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
