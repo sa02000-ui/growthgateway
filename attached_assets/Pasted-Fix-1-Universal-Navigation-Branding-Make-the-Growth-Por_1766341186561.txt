@@ -1,0 +1,49 @@
+Fix 1: Universal Navigation & Branding
+
+Make the 'Growth Portal' logo (top left) and any profile icon (bottom left) globally clickable to return to the Dashboard (if logged in) or Landing Page (if logged out).
+
+Fix 2: High-Fidelity Profile & Research-Grade Demographics
+
+Identity: Separate 'Display Name' and 'Legal Full Name'.
+
+Education: Expand to include 'Field of Study' (e.g., Engineering, Arts, Medicine) and 'Highest Level'.
+
+Profession: Replace the text box with a searchable dropdown using Standard Occupational Classifications (e.g., Management, Healthcare, Sales, Self-Employed). Allow 'Start typing' to filter.
+
+Life Events: Allow users to log events with an approximate Year/Date and a 'Significance' slider. Events like 'Divorce' should be permanently part of their profile history, not just 'last 12 months'.
+
+Geography: Add 'Country of Birth', 'Current Region', and 'Total Regions Lived In'.
+
+Tracking: Fix the 'Save' button. Every save MUST create a timestamped row in profile_history.
+
+Fix 3: Peer Invitation System
+
+On 'Peer Feedback' and 'Dashboard', add an 'Invite Peer' button that opens a modal.
+
+The modal should allow entering one or more Email/Phone numbers and a customizable message template (e.g., '[Name] is using Growth Gateway to align their self-perception...').
+
+Guest Access Fix: Ensure guests clicking the link NEVER see a login page. They must go straight to the 3rd-person translated assessment.
+
+Fix 4: Scientific Trust (Tooltips)
+
+Add 'i' tooltips for all scientific terms:
+
+Cronbach's Alpha: 'A measure of how consistently the test questions measure the same trait.'
+
+Validity: 'Confirmation that this test actually measures what it claims to measure.'
+
+Add tooltips for sensitive profile items explaining: 'We collect this to see how [Category] affects personality trends over time.'
+
+Fix 5: Family & Teams Logic
+
+Activate all buttons on the 'Family & Teams' tab. Users must be able to:
+
+Create a named Group (e.g., 'The Smith Family' or 'Marketing Team').
+
+Assign peers to these groups.
+
+Toggle 'Privacy Settings' for each group (e.g., 'Share only Big 5 results' vs 'Share all history').
+
+Fix 6: Assessment History
+
+In 'Explore Assessments', for each card, display: 'Last taken: [Date]' and 'Total completions: [Count]'. If zero, show 'Not yet taken'

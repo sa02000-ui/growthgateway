@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Copy, CheckCircle2, Clock, Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Users, Copy, CheckCircle2, Clock, Shield, Eye, EyeOff, Loader2, Mail, Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
 
@@ -26,6 +30,13 @@ export default function PeerFeedbackTab() {
   const [copied, setCopied] = useState(false);
 
   const [feedbackToken, setFeedbackToken] = useState<string | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState<string[]>(['']);
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [sendingInvites, setSendingInvites] = useState(false);
+
+  const userName = user?.user_metadata?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Someone';
+  const defaultMessage = `${userName} is using GrowthPortal to better understand their personality and how others perceive them. Your honest feedback would be incredibly valuable for their personal growth journey.\n\nThe assessment takes about 5 minutes and you can choose to remain anonymous.`;
   
   useEffect(() => {
     async function fetchToken() {
@@ -115,6 +126,61 @@ export default function PeerFeedbackTab() {
     return feedback.peer_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const openInviteModal = () => {
+    setInviteEmails(['']);
+    setInviteMessage(defaultMessage);
+    setShowInviteModal(true);
+  };
+
+  const addEmailField = () => {
+    setInviteEmails([...inviteEmails, '']);
+  };
+
+  const removeEmailField = (index: number) => {
+    if (inviteEmails.length > 1) {
+      setInviteEmails(inviteEmails.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateEmail = (index: number, value: string) => {
+    const newEmails = [...inviteEmails];
+    newEmails[index] = value;
+    setInviteEmails(newEmails);
+  };
+
+  const handleSendInvites = async () => {
+    const validEmails = inviteEmails.filter(e => e.trim() && e.includes('@'));
+    if (validEmails.length === 0) {
+      toast({
+        title: 'No valid emails',
+        description: 'Please enter at least one valid email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingInvites(true);
+    try {
+      const emailBody = `${inviteMessage}\n\nClick here to provide feedback: ${feedbackUrl}`;
+      const mailtoLink = `mailto:${validEmails.join(',')}?subject=Request for Personality Feedback&body=${encodeURIComponent(emailBody)}`;
+      window.open(mailtoLink, '_blank');
+      
+      toast({
+        title: 'Invite ready!',
+        description: `Your email client will open with ${validEmails.length} recipient(s). Send the email to complete the invitation.`,
+      });
+      setShowInviteModal(false);
+    } catch (err) {
+      toast({
+        title: 'Failed to prepare invite',
+        description: 'Please try copying the link manually instead.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingInvites(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -134,23 +200,34 @@ export default function PeerFeedbackTab() {
             Gather insights from people who know you best
           </p>
         </div>
-        <Button 
-          onClick={handleCopyLink} 
-          className="gap-2"
-          data-testid="button-copy-link"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 className="w-4 h-4" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="w-4 h-4" />
-              Copy Invite Link
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button 
+            onClick={openInviteModal} 
+            className="gap-2"
+            data-testid="button-invite-peer"
+          >
+            <Mail className="w-4 h-4" />
+            Invite Peer
+          </Button>
+          <Button 
+            onClick={handleCopyLink} 
+            variant="outline"
+            className="gap-2"
+            data-testid="button-copy-link"
+          >
+            {copied ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4" />
+                Copy Link
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -307,6 +384,95 @@ export default function PeerFeedbackTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-primary" />
+              Invite Peers for Feedback
+            </DialogTitle>
+            <DialogDescription>
+              Send personalized invitations to colleagues, friends, or family members
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <Label>Email Addresses</Label>
+              {inviteEmails.map((email, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    type="email"
+                    placeholder="peer@example.com"
+                    value={email}
+                    onChange={(e) => updateEmail(index, e.target.value)}
+                    data-testid={`input-invite-email-${index}`}
+                  />
+                  {inviteEmails.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeEmailField(index)}
+                      data-testid={`button-remove-email-${index}`}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addEmailField}
+                className="gap-1"
+                data-testid="button-add-email"
+              >
+                <Plus className="w-3 h-3" />
+                Add Another Email
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Personal Message</Label>
+              <Textarea
+                value={inviteMessage}
+                onChange={(e) => setInviteMessage(e.target.value)}
+                placeholder="Add a personal message..."
+                rows={5}
+                className="resize-none"
+                data-testid="textarea-invite-message"
+              />
+              <p className="text-xs text-muted-foreground">
+                The feedback link will be automatically added to your message.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowInviteModal(false)}
+              data-testid="button-cancel-invite"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendInvites}
+              disabled={sendingInvites}
+              className="gap-2"
+              data-testid="button-send-invites"
+            >
+              {sendingInvites ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4" />
+              )}
+              Open Email Client
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

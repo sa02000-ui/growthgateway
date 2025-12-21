@@ -8,10 +8,10 @@ export default function Landing() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 hover-elevate p-1 -m-1 rounded-md cursor-pointer" data-testid="link-logo-landing">
             <Leaf className="w-6 h-6 text-primary" />
             <span className="text-foreground font-semibold text-lg tracking-tight">GrowthPortal</span>
-          </div>
+          </Link>
           <Link href="/auth">
             <Button variant="outline" data-testid="button-header-sign-in">
               Sign In

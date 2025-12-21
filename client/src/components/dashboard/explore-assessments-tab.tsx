@@ -23,8 +23,10 @@ import {
   ArrowRight,
   Loader2,
   User,
-  History
+  History,
+  Info
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth-context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
@@ -611,14 +613,32 @@ export default function ExploreAssessmentsTab() {
                           {assessment.scientificSource.name}
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-green-600" />
-                            {assessment.scientificSource.reliability}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-green-600" />
-                            Validity: {assessment.scientificSource.validityScore}%
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1 cursor-help">
+                                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                {assessment.scientificSource.reliability}
+                                <Info className="w-3 h-3 text-muted-foreground" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-xs font-medium mb-1">Internal Consistency</p>
+                              <p className="text-xs">Cronbach's alpha measures how reliably a test measures what it claims. Values above 0.80 indicate excellent reliability, meaning the assessment produces consistent results.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1 cursor-help">
+                                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                Validity: {assessment.scientificSource.validityScore}%
+                                <Info className="w-3 h-3 text-muted-foreground" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-xs font-medium mb-1">Scientific Validity</p>
+                              <p className="text-xs">Validity score indicates how well the assessment measures actual personality traits, based on peer-reviewed research and correlation with other validated measures.</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     )}

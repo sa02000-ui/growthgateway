@@ -66,10 +66,14 @@ export default function Dashboard() {
       <div className="flex h-screen w-full bg-background">
         <Sidebar className="border-r border-sidebar-border bg-sidebar">
           <SidebarHeader className="p-4 border-b border-sidebar-border">
-            <div className="flex items-center gap-2">
+            <Link 
+              href="/dashboard" 
+              className="flex items-center gap-2 hover-elevate p-1 -m-1 rounded-md cursor-pointer"
+              data-testid="link-logo-dashboard"
+            >
               <Leaf className="w-6 h-6 text-primary" />
               <span className="text-sidebar-foreground font-semibold text-lg tracking-tight">GrowthPortal</span>
-            </div>
+            </Link>
           </SidebarHeader>
           <SidebarContent className="p-2">
             <SidebarGroup>
@@ -99,7 +103,7 @@ export default function Dashboard() {
           </SidebarContent>
           <div className="mt-auto p-4 border-t border-sidebar-border">
             <Link 
-              href="/dashboard/profile"
+              href="/dashboard"
               className="flex items-center gap-3 mb-3 hover-elevate p-2 -m-2 rounded-md cursor-pointer"
               data-testid="link-sidebar-profile"
             >
