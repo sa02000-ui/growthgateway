@@ -389,5 +389,192 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== GROUP ENDPOINTS ====================
+
+  // Create a new group
+  app.post("/api/groups", async (req, res) => {
+    try {
+      const { name, type, privacyLevel, createdBy } = req.body;
+
+      if (!name || !createdBy) {
+        return res.status(400).json({ error: "name and createdBy are required" });
+      }
+
+      const { data, error } = await supabase
+        .from('groups')
+        .insert({
+          name,
+          type: type || 'team',
+          privacy_level: privacyLevel || 'anonymous',
+          created_by: createdBy,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Group creation error:', error);
+        return res.status(500).json({ error: "Failed to create group", details: error.message });
+      }
+
+      res.json({ success: true, group: data });
+    } catch (error) {
+      console.error('Group creation error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // List groups for a user
+  app.get("/api/groups/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const { data: ownedGroups, error: ownedError } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('created_by', userId);
+
+      if (ownedError) {
+        console.error('Groups fetch error:', ownedError);
+        return res.status(500).json({ error: "Failed to fetch groups" });
+      }
+
+      const { data: memberGroups, error: memberError } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', userId);
+
+      if (memberError) {
+        console.error('Group members fetch error:', memberError);
+      }
+
+      const memberGroupIds = memberGroups?.map(m => m.group_id) || [];
+      
+      let allGroups = ownedGroups || [];
+      if (memberGroupIds.length > 0) {
+        const { data: additionalGroups } = await supabase
+          .from('groups')
+          .select('*')
+          .in('id', memberGroupIds);
+        
+        if (additionalGroups) {
+          const existingIds = new Set(allGroups.map(g => g.id));
+          additionalGroups.forEach(g => {
+            if (!existingIds.has(g.id)) {
+              allGroups.push(g);
+            }
+          });
+        }
+      }
+
+      res.json({ groups: allGroups });
+    } catch (error) {
+      console.error('Groups fetch error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Add member to a group
+  app.post("/api/groups/:groupId/members", async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const { email, name, role, userId } = req.body;
+
+      if (!email && !userId) {
+        return res.status(400).json({ error: "email or userId is required" });
+      }
+
+      const { data, error } = await supabase
+        .from('group_members')
+        .insert({
+          group_id: groupId,
+          user_id: userId || null,
+          email: email || null,
+          name: name || null,
+          role: role || 'member',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Add member error:', error);
+        return res.status(500).json({ error: "Failed to add member", details: error.message });
+      }
+
+      res.json({ success: true, member: data });
+    } catch (error) {
+      console.error('Add member error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get members of a group
+  app.get("/api/groups/:groupId/members", async (req, res) => {
+    try {
+      const { groupId } = req.params;
+
+      const { data, error } = await supabase
+        .from('group_members')
+        .select('*')
+        .eq('group_id', groupId);
+
+      if (error) {
+        console.error('Group members fetch error:', error);
+        return res.status(500).json({ error: "Failed to fetch group members" });
+      }
+
+      res.json({ members: data });
+    } catch (error) {
+      console.error('Group members fetch error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Remove member from a group
+  app.delete("/api/groups/:groupId/members/:memberId", async (req, res) => {
+    try {
+      const { groupId, memberId } = req.params;
+
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('id', memberId)
+        .eq('group_id', groupId);
+
+      if (error) {
+        console.error('Remove member error:', error);
+        return res.status(500).json({ error: "Failed to remove member" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Remove member error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete a group
+  app.delete("/api/groups/:groupId", async (req, res) => {
+    try {
+      const { groupId } = req.params;
+
+      await supabase.from('group_members').delete().eq('group_id', groupId);
+
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupId);
+
+      if (error) {
+        console.error('Delete group error:', error);
+        return res.status(500).json({ error: "Failed to delete group" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete group error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

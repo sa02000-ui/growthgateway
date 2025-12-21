@@ -29,11 +29,16 @@ import {
   occupationCategories,
   fieldOfStudyOptions,
   countryOptions,
+  yearsInRegionOptions,
+  youngestChildAgeOptions,
 } from '@shared/schema';
 
 interface ProfileData {
   maritalStatus: string;
-  yearsInCurrentRegion: string;
+  childrenCount: string;
+  youngestChildAge: string;
+  birthCountry: string;
+  yearsInRegion: string;
   culturalBackground: string;
   profession: string;
   industry: string;
@@ -42,9 +47,6 @@ interface ProfileData {
   householdIncome: string;
   parentalOccupation: string;
   parentalIncome: string;
-  countryOfBirth: string;
-  currentCountry: string;
-  totalRegionsLived: string;
 }
 
 interface LifeEventEntry {
@@ -85,7 +87,10 @@ export default function ProfileTab() {
 
   const [profile, setProfile] = useState<ProfileData>({
     maritalStatus: '',
-    yearsInCurrentRegion: '',
+    childrenCount: '',
+    youngestChildAge: '',
+    birthCountry: '',
+    yearsInRegion: '',
     culturalBackground: '',
     profession: '',
     industry: '',
@@ -94,9 +99,6 @@ export default function ProfileTab() {
     householdIncome: '',
     parentalOccupation: '',
     parentalIncome: '',
-    countryOfBirth: '',
-    currentCountry: '',
-    totalRegionsLived: '',
   });
 
   const [lifeEvents, setLifeEvents] = useState<LifeEventsData>({
@@ -134,7 +136,10 @@ export default function ProfileTab() {
         if (!error && data) {
           setProfile({
             maritalStatus: data.marital_status || '',
-            yearsInCurrentRegion: data.years_in_current_region?.toString() || '',
+            childrenCount: data.children_count?.toString() || '',
+            youngestChildAge: data.youngest_child_age || '',
+            birthCountry: data.birth_country || '',
+            yearsInRegion: data.years_in_region || '',
             culturalBackground: data.cultural_background || '',
             profession: data.profession || '',
             industry: data.industry || '',
@@ -143,9 +148,6 @@ export default function ProfileTab() {
             householdIncome: data.household_income || '',
             parentalOccupation: data.parental_occupation || '',
             parentalIncome: data.parental_income || '',
-            countryOfBirth: data.country_of_birth || '',
-            currentCountry: data.current_country || '',
-            totalRegionsLived: data.total_regions_lived?.toString() || '',
           });
         }
 
@@ -274,7 +276,10 @@ export default function ProfileTab() {
       const profileData = {
         user_id: user.id,
         marital_status: profile.maritalStatus || null,
-        years_in_current_region: profile.yearsInCurrentRegion ? parseInt(profile.yearsInCurrentRegion) : null,
+        children_count: profile.childrenCount ? parseInt(profile.childrenCount) : null,
+        youngest_child_age: profile.youngestChildAge || null,
+        birth_country: profile.birthCountry || null,
+        years_in_region: profile.yearsInRegion || null,
         cultural_background: profile.culturalBackground || null,
         profession: profile.profession || null,
         industry: profile.industry || null,
@@ -283,9 +288,6 @@ export default function ProfileTab() {
         household_income: profile.householdIncome || null,
         parental_occupation: profile.parentalOccupation || null,
         parental_income: profile.parentalIncome || null,
-        country_of_birth: profile.countryOfBirth || null,
-        current_country: profile.currentCountry || null,
-        total_regions_lived: profile.totalRegionsLived ? parseInt(profile.totalRegionsLived) : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -559,6 +561,36 @@ export default function ProfileTab() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="childrenCount">Number of Children</Label>
+              <Input
+                id="childrenCount"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={profile.childrenCount}
+                onChange={(e) => setProfile(p => ({ ...p, childrenCount: e.target.value }))}
+                data-testid="input-children-count"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="youngestChildAge">Age of Youngest Child</Label>
+              <Select 
+                value={profile.youngestChildAge} 
+                onValueChange={(value) => setProfile(p => ({ ...p, youngestChildAge: value }))}
+              >
+                <SelectTrigger data-testid="select-youngest-child-age">
+                  <SelectValue placeholder="Select age range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {youngestChildAgeOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="culturalBackground" className="flex items-center gap-2">
                 Cultural Background
                 <Tooltip>
@@ -767,29 +799,12 @@ export default function ProfileTab() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="countryOfBirth">Country of Birth</Label>
+              <Label htmlFor="birthCountry">Country of Birth</Label>
               <Select 
-                value={profile.countryOfBirth} 
-                onValueChange={(value) => setProfile(p => ({ ...p, countryOfBirth: value }))}
+                value={profile.birthCountry} 
+                onValueChange={(value) => setProfile(p => ({ ...p, birthCountry: value }))}
               >
-                <SelectTrigger data-testid="select-country-of-birth">
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countryOptions.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="currentCountry">Current Country of Residence</Label>
-              <Select 
-                value={profile.currentCountry} 
-                onValueChange={(value) => setProfile(p => ({ ...p, currentCountry: value }))}
-              >
-                <SelectTrigger data-testid="select-current-country">
+                <SelectTrigger data-testid="select-birth-country">
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
@@ -802,26 +817,19 @@ export default function ProfileTab() {
 
             <div className="space-y-2">
               <Label htmlFor="yearsInRegion">Years in Current Region</Label>
-              <Input
-                id="yearsInRegion"
-                type="number"
-                placeholder="e.g., 5"
-                value={profile.yearsInCurrentRegion}
-                onChange={(e) => setProfile(p => ({ ...p, yearsInCurrentRegion: e.target.value }))}
-                data-testid="input-years-in-region"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="totalRegionsLived">Total Regions/Countries Lived In</Label>
-              <Input
-                id="totalRegionsLived"
-                type="number"
-                placeholder="e.g., 3"
-                value={profile.totalRegionsLived}
-                onChange={(e) => setProfile(p => ({ ...p, totalRegionsLived: e.target.value }))}
-                data-testid="input-total-regions"
-              />
+              <Select 
+                value={profile.yearsInRegion} 
+                onValueChange={(value) => setProfile(p => ({ ...p, yearsInRegion: value }))}
+              >
+                <SelectTrigger data-testid="select-years-in-region">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearsInRegionOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
