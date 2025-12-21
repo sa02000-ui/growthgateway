@@ -100,6 +100,12 @@ npm run dev
 - `GET /api/feedback-token/:token` - Resolve token to user ID (public)
 
 ## Recent Changes
+- 2024-12-21: Enhanced Family & Teams tab with interactive group creation, member management, and privacy settings
+- 2024-12-21: Added scientific tooltips for Cronbach's Alpha and Validity scores on assessment cards
+- 2024-12-21: Implemented Peer Invitation system with multi-email input and customizable message template
+- 2024-12-21: Enhanced Profile with SOC occupation categories, Field of Study, and Geography tracking (country of birth, current country, total regions lived)
+- 2024-12-21: Added Life Events Log with event type dropdown, year input, and significance slider (1-10 scale)
+- 2024-12-21: Made navigation logo/profile clickable (conditional routing based on auth state)
 - 2024-12-21: Added AI-powered growth insights using OpenAI gpt-4o-mini with Senior I-O Psychologist persona
 - 2024-12-21: Implemented secure feedback token system (privacy-preserving URLs with xxxx-xx-xx format)
 - 2024-12-21: Created Explore tab with categorized test library and scientific validation badges
