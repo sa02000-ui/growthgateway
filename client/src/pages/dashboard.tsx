@@ -101,7 +101,11 @@ export default function Dashboard() {
             </SidebarGroup>
           </SidebarContent>
           <div className="mt-auto p-4 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 mb-3">
+            <a 
+              href="/dashboard/profile" 
+              className="flex items-center gap-3 mb-3 hover-elevate p-2 -m-2 rounded-md cursor-pointer"
+              data-testid="link-sidebar-profile"
+            >
               <Avatar className="w-8 h-8">
                 <AvatarImage src={user.user_metadata?.avatar_url} />
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
@@ -112,7 +116,7 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
-            </div>
+            </a>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -129,10 +133,14 @@ export default function Dashboard() {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 border-b border-border flex items-center justify-between gap-4 px-4 bg-card">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="text-foreground" />
-            <div className="flex items-center gap-2">
+            <a 
+              href="/dashboard/profile" 
+              className="flex items-center gap-2 hover-elevate px-2 py-1 rounded-md cursor-pointer"
+              data-testid="link-header-profile"
+            >
               <span className="text-sm text-muted-foreground">Welcome back,</span>
               <span className="text-sm font-medium text-foreground">{userName}</span>
-            </div>
+            </a>
           </header>
           <main className="flex-1 overflow-auto">
             <div className="p-6 md:p-8">

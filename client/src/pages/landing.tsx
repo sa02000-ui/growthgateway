@@ -50,27 +50,27 @@ export default function Landing() {
       <section className="py-24 px-4 md:px-8 border-t border-border">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-semibold text-foreground text-center mb-4">
-            How It Works
+            360-Degree Perspective Alignment
           </h2>
           <p className="text-muted-foreground text-center max-w-2xl mx-auto mb-16">
-            Our platform helps you understand how your self-perception aligns with how others experience you, guiding you toward authentic growth.
+            Understand yourself through three powerful lenses: how you see yourself, how others experience you, and how both evolve over time.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <FeatureCard 
               icon={<Target className="w-6 h-6" />}
-              title="Self-Assessment"
-              description="Complete comprehensive personality assessments to understand how you perceive yourself and your goals."
-            />
-            <FeatureCard 
-              icon={<TrendingUp className="w-6 h-6" />}
-              title="Longitudinal Tracking"
-              description="Map your personal growth over months and years with detailed timeline visualizations of your evolving traits."
+              title="Self-Perception"
+              description="Complete scientifically-validated personality assessments to capture your authentic self-view with the IPIP-NEO-120."
             />
             <FeatureCard 
               icon={<Users className="w-6 h-6" />}
-              title="Network Perspective"
-              description="See how your self-perception aligns with how your colleagues, friends, and family experience you."
+              title="Network Perception"
+              description="Invite peers, colleagues, and family to share how they experience you. Anonymous third-person assessments reveal your blind spots."
+            />
+            <FeatureCard 
+              icon={<TrendingUp className="w-6 h-6" />}
+              title="Time-Based Evolution"
+              description="Track how life events shape your personality over months and years. See how career changes, relationships, and milestones influence your growth."
             />
           </div>
         </div>
