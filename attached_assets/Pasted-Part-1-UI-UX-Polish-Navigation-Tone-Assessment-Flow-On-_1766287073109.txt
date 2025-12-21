@@ -1,0 +1,43 @@
+Part 1: UI & UX Polish (Navigation & Tone)
+
+Assessment Flow: On the assessment page, when clicking "Next" to view the next page of questions, ensure the page automatically scrolls to the top.
+
+Professional Tone: Update all headers to reflect "Perspective Alignment" or "Multidimensional View" instead of using the word "Gap."
+
+Branding: Update the main Dashboard header to "Personal Growth Overview" and the sidebar link to "Growth History."
+
+Landing Page: Update the "How it Works" section to highlight Longitudinal Tracking (mapping growth over years) and Network Perspective (seeing how your evolution aligns with how others perceive you).
+
+Part 2: The Network Feedback System (Goal #4)
+
+Public Feedback Link: Generate a unique, public-facing URL for the user (e.g., /feedback/:userId). Ensure this route allows guest access (no login required).
+
+Anonymity & Privacy: > * Allow peers to choose "Share my name" or "Submit anonymously."
+
+The "Threshold of 3" Rule: On the user's dashboard, hide the names of respondents until at least 3 people have completed feedback to protect peer privacy.
+
+Teams Integration: Link the "Invite Peer" action to the Teams & Family logic so pending invites are visible to the user.
+
+Part 3: Profile & Longitudinal Demographic Tracking (Goal #5)
+
+The User Profile: Create a comprehensive /profile page.
+
+Demographic Snapshot (Tracked over time): Create a section to capture and log (save to a history table) the following data:
+
+Marital Status: Single, Married, Partnered, Divorced, Widowed.
+
+Cultural Context: Years in current region, Primary cultural background (Eastern/Western).
+
+Socio-Economics: Profession, Industry, Education Level, and Household Income bracket.
+
+Parental Context: Parental occupation and income level during the user's childhood (for social mobility insights).
+
+The "Update Logic": Every time a user takes a new assessment, prompt them to "Confirm Profile Info" with a 'No Change since last test' checkbox to make updating quick and easy.
+
+Life Events Log: Include a list of checkboxes for major changes in the last 12 months (e.g., New Job, Relocation, Marriage, Divorce, Loss of a loved one). This data must be saved alongside the personality scores for correlation analysis.
+
+Part 4: Data Visualization (The Multi-Layer View)
+
+Update the Radar Chart to show two distinct layers: "My Perception" (Solid) and "Network Perspective" (Average of all peers, Outline).
+
+Add a legend and tooltips explaining these two layers as "Alignment.

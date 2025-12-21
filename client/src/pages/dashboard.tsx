@@ -13,20 +13,22 @@ import {
   SidebarGroup,
   SidebarGroupContent
 } from '@/components/ui/sidebar';
-import { Home, ClipboardList, Users, UsersRound, LogOut, Leaf } from 'lucide-react';
+import { Home, ClipboardList, Users, UsersRound, LogOut, Leaf, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import HomeTab from '@/components/dashboard/home-tab';
 import AssessmentsTab from '@/components/dashboard/assessments-tab';
 import PeerFeedbackTab from '@/components/dashboard/peer-feedback-tab';
 import FamilyTeamsTab from '@/components/dashboard/family-teams-tab';
+import ProfileTab from '@/components/dashboard/profile-tab';
 import Footer from '@/components/footer';
 
 const navItems = [
-  { title: 'Home', icon: Home, href: '/dashboard' },
+  { title: 'Growth Overview', icon: Home, href: '/dashboard' },
   { title: 'My Assessments', icon: ClipboardList, href: '/dashboard/assessments' },
   { title: 'Peer Feedback', icon: Users, href: '/dashboard/feedback' },
   { title: 'Family & Teams', icon: UsersRound, href: '/dashboard/teams' },
+  { title: 'My Profile', icon: UserCircle, href: '/dashboard/profile' },
 ];
 
 export default function Dashboard() {
@@ -136,6 +138,7 @@ export default function Dashboard() {
                 <Route path="/dashboard/assessments" component={AssessmentsTab} />
                 <Route path="/dashboard/feedback" component={PeerFeedbackTab} />
                 <Route path="/dashboard/teams" component={FamilyTeamsTab} />
+                <Route path="/dashboard/profile" component={ProfileTab} />
               </Switch>
             </div>
             <Footer />

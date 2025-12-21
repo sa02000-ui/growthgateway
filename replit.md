@@ -14,9 +14,10 @@ A web application that helps users bridge the gap between self-perception, desir
 client/src/
 ├── components/
 │   ├── dashboard/       # Dashboard tab components
-│   │   ├── home-tab.tsx           # Perception Gap radar chart
+│   │   ├── home-tab.tsx           # Perspective Alignment radar chart
 │   │   ├── assessments-tab.tsx    # My Assessments page
 │   │   ├── peer-feedback-tab.tsx  # Peer Feedback page
+│   │   ├── profile-tab.tsx        # My Profile page (demographics + life events)
 │   │   └── family-teams-tab.tsx   # Family & Teams page
 │   └── ui/              # Shadcn UI components
 ├── lib/
@@ -42,13 +43,17 @@ server/
 1. **Landing Page**: Hero section with value proposition
 2. **Authentication**: Email/Password + Google OAuth via Supabase Auth UI
 3. **Dashboard**: Multi-tab layout with sidebar navigation
-4. **Perception Gap Chart**: Radar chart showing 4 overlapping datasets
+4. **Perspective Alignment Chart**: Radar chart with two distinct layers (solid Self, dashed Peers)
 5. **IPIP-NEO-120 Assessment**: Complete 120-question personality assessment with:
    - Paginated question display (10 per page)
    - Positive/negative keyed scoring
    - Big Five trait calculation (OCEAN)
    - Results visualization with trait interpretations
    - Assessment history tracking
+   - Profile confirmation dialog before starting assessments
+6. **My Profile**: Demographic tracking (marital status, cultural background, profession, education, income, parental context)
+7. **Life Events Log**: Track major life events (new job, relocation, marriage, divorce, etc.)
+8. **Privacy Protection**: "Threshold of 3" rule - peer feedback names hidden until 3+ responses received
 
 ## Shared Modules
 - `shared/ipip-neo-120.ts` - All 120 questions with trait assignments and +/- keying
@@ -85,6 +90,13 @@ npm run dev
 - `GET /api/peer-feedback/:userId` - Get all peer feedback with averages (authenticated)
 
 ## Recent Changes
+- 2024-12-21: Added profile confirmation dialog before assessments (must confirm profile is current)
+- 2024-12-21: Created comprehensive Profile page with demographic tracking and Life Events Log
+- 2024-12-21: Implemented "Threshold of 3" privacy rule for peer feedback (names hidden until 3+ responses)
+- 2024-12-21: Updated terminology from "Gap" to "Perspective Alignment" throughout the app
+- 2024-12-21: Enhanced Radar Chart with two visual layers (solid Self, dashed Peers) and interpretive legend
+- 2024-12-21: Added auto-scroll to top on assessment page navigation
+- 2024-12-21: Updated Landing Page with "Longitudinal Tracking" and "Network Perspective" messaging
 - 2024-12-20: Added Peer Feedback Engine - public /feedback/:userId route, 30-question test, anonymity option
 - 2024-12-20: Updated Radar Chart to show self vs peer perception gap with two shapes
 - 2024-12-20: Fixed Sign Out button and added error handling to assessment submission

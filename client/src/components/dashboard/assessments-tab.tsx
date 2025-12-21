@@ -6,9 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ClipboardList, Play, Clock, CheckCircle2, ArrowLeft, ArrowRight, Brain, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ClipboardList, Play, Clock, CheckCircle2, ArrowLeft, ArrowRight, Brain, Loader2, User } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useLocation } from 'wouter';
 import questionsData from '@/data/questions.json';
 import { getCompletionPercentage, getTraitInterpretation } from '@shared/scoring';
 import type { TraitScores, AssessmentResponses } from '@shared/schema';
@@ -30,10 +33,18 @@ type AssessmentState = 'list' | 'taking' | 'results';
 
 export default function AssessmentsTab() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [state, setState] = useState<AssessmentState>('list');
   const [responses, setResponses] = useState<AssessmentResponses>({});
   const [currentPage, setCurrentPage] = useState(0);
   const [latestScores, setLatestScores] = useState<TraitScores | null>(null);
+  const [showProfileConfirm, setShowProfileConfirm] = useState(false);
+  const [profileNoChange, setProfileNoChange] = useState(false);
+
+  const handleNavigateToProfile = () => {
+    setShowProfileConfirm(false);
+    setLocation('/dashboard/profile');
+  };
 
   const questionsPerPage = 10;
   const totalPages = Math.ceil(questions.length / questionsPerPage);
@@ -63,7 +74,13 @@ export default function AssessmentsTab() {
     },
   });
 
-  const startAssessment = () => {
+  const handleStartClick = () => {
+    setShowProfileConfirm(true);
+  };
+
+  const confirmAndStart = () => {
+    setShowProfileConfirm(false);
+    setProfileNoChange(false);
     setResponses({});
     setCurrentPage(0);
     setState('taking');
@@ -199,7 +216,10 @@ export default function AssessmentsTab() {
             </Button>
           ) : (
             <Button
-              onClick={() => setCurrentPage(p => p + 1)}
+              onClick={() => {
+                setCurrentPage(p => p + 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               disabled={!canProceed()}
               className="gap-2 bg-[#0f172a]"
               data-testid="button-next-page"
@@ -317,7 +337,7 @@ export default function AssessmentsTab() {
             how you perceive yourself and identify areas for personal growth.
           </p>
           <Button 
-            onClick={startAssessment} 
+            onClick={handleStartClick} 
             className="bg-white text-[#0f172a] gap-2"
             data-testid="button-start-ipip"
           >
@@ -326,6 +346,58 @@ export default function AssessmentsTab() {
           </Button>
         </CardContent>
       </Card>
+
+      <Dialog open={showProfileConfirm} onOpenChange={setShowProfileConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" />
+              Confirm Your Profile
+            </DialogTitle>
+            <DialogDescription>
+              Before taking the assessment, please ensure your demographic profile is up to date. 
+              This helps us provide more accurate longitudinal insights.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="noChange"
+                checked={profileNoChange}
+                onCheckedChange={(checked) => setProfileNoChange(checked === true)}
+                data-testid="checkbox-no-change"
+              />
+              <Label htmlFor="noChange" className="text-sm cursor-pointer">
+                No changes since my last assessment
+              </Label>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              If your life circumstances have changed (job, location, relationships, etc.), 
+              please update your profile before continuing.
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleNavigateToProfile}
+              className="w-full sm:w-auto gap-2" 
+              data-testid="button-update-profile"
+            >
+              <User className="w-4 h-4" />
+              Update Profile
+            </Button>
+            <Button 
+              onClick={confirmAndStart} 
+              disabled={!profileNoChange}
+              className="w-full sm:w-auto gap-2"
+              data-testid="button-confirm-start"
+            >
+              <Play className="w-4 h-4" />
+              Continue to Assessment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {resultsLoading ? (
         <div className="flex items-center justify-center py-8">

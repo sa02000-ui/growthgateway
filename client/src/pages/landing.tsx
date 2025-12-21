@@ -53,7 +53,7 @@ export default function Landing() {
             How It Works
           </h2>
           <p className="text-muted-foreground text-center max-w-2xl mx-auto mb-16">
-            Our platform helps you understand the perception gaps in your life and guides you toward authentic growth.
+            Our platform helps you understand how your self-perception aligns with how others experience you, guiding you toward authentic growth.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -63,14 +63,14 @@ export default function Landing() {
               description="Complete comprehensive personality assessments to understand how you perceive yourself and your goals."
             />
             <FeatureCard 
-              icon={<Users className="w-6 h-6" />}
-              title="Peer Feedback"
-              description="Gather anonymous feedback from colleagues, friends, and family to see how others perceive you."
+              icon={<TrendingUp className="w-6 h-6" />}
+              title="Longitudinal Tracking"
+              description="Map your personal growth over months and years with detailed timeline visualizations of your evolving traits."
             />
             <FeatureCard 
-              icon={<TrendingUp className="w-6 h-6" />}
-              title="Track Growth"
-              description="Visualize the gaps between perceptions and track your progress as you work toward alignment."
+              icon={<Users className="w-6 h-6" />}
+              title="Network Perspective"
+              description="See how your self-perception aligns with how your colleagues, friends, and family experience you."
             />
           </div>
         </div>

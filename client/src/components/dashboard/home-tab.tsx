@@ -398,7 +398,7 @@ export default function HomeTab() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight" data-testid="text-dashboard-title">
-            Your Growth Dashboard
+            Personal Growth Overview
           </h1>
           <p className="text-muted-foreground mt-1">
             Track your Big Five personality traits over time
@@ -492,10 +492,10 @@ export default function HomeTab() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
-              Perception Gap
+              Perspective Alignment
             </CardTitle>
             <CardDescription>
-              How you see yourself vs how others see you
+              Compare your self-perception with how your network experiences you
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
@@ -515,33 +515,66 @@ export default function HomeTab() {
                     tickCount={5}
                   />
                   <Radar
-                    name="How I see myself"
+                    name="My Perception (Self)"
                     dataKey="self"
                     stroke="hsl(var(--primary))"
                     fill="hsl(var(--primary))"
-                    fillOpacity={0.3}
+                    fillOpacity={0.35}
                     strokeWidth={2}
                   />
                   {peerAverages && (
                     <Radar
-                      name="How my network sees me"
+                      name="Network Perspective (Peers)"
                       dataKey="peer"
                       stroke="hsl(var(--chart-2))"
                       fill="transparent"
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
+                      strokeWidth={2.5}
+                      strokeDasharray="6 3"
                     />
                   )}
                   <Legend 
-                    wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
+                    wrapperStyle={{ paddingTop: '12px', fontSize: '11px' }}
+                    formatter={(value) => <span className="text-muted-foreground">{value}</span>}
+                  />
+                  <RechartsTooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-card border border-border rounded-md p-3 shadow-md text-sm" data-testid="tooltip-radar" role="tooltip" aria-label={`${data.trait} scores`}>
+                            <p className="font-medium text-foreground mb-2">{data.trait}</p>
+                            <p className="text-muted-foreground" data-testid="tooltip-self-score">
+                              <span className="inline-block w-3 h-3 rounded-full bg-primary mr-2" aria-hidden="true"></span>
+                              My Perception: <span className="font-medium text-foreground">{data.self}%</span>
+                            </p>
+                            {data.peer !== null && (
+                              <p className="text-muted-foreground mt-1" data-testid="tooltip-peer-score">
+                                <span className="inline-block w-3 h-3 rounded-full border-2 border-[hsl(var(--chart-2))] mr-2" aria-hidden="true"></span>
+                                Network View: <span className="font-medium text-foreground">{data.peer}%</span>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
                   />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
             {!peerAverages && (
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Invite peers to see how others perceive you
+                Invite peers to see how your self-perception aligns with their perspective
               </p>
+            )}
+            {peerAverages && (
+              <div className="mt-3 p-3 bg-muted/30 rounded-md border border-border" data-testid="text-chart-legend">
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">How to read this chart:</strong> The solid shape represents how you see yourself. 
+                  The dashed outline shows the average of how your peers perceive you. 
+                  Areas where these shapes align indicate consistent self-awareness.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

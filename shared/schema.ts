@@ -68,3 +68,96 @@ export const insertPeerFeedbackSchema = createInsertSchema(peerFeedback).omit({
 
 export type InsertPeerFeedback = z.infer<typeof insertPeerFeedbackSchema>;
 export type PeerFeedback = typeof peerFeedback.$inferSelect;
+
+export const userProfiles = pgTable("user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  maritalStatus: varchar("marital_status"),
+  yearsInCurrentRegion: integer("years_in_current_region"),
+  culturalBackground: varchar("cultural_background"),
+  profession: varchar("profession"),
+  industry: varchar("industry"),
+  educationLevel: varchar("education_level"),
+  householdIncome: varchar("household_income"),
+  parentalOccupation: varchar("parental_occupation"),
+  parentalIncome: varchar("parental_income"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
+
+export const lifeEvents = pgTable("life_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  assessmentId: varchar("assessment_id"),
+  newJob: varchar("new_job").default('false'),
+  relocation: varchar("relocation").default('false'),
+  marriage: varchar("marriage").default('false'),
+  divorce: varchar("divorce").default('false'),
+  lossOfLovedOne: varchar("loss_of_loved_one").default('false'),
+  newChild: varchar("new_child").default('false'),
+  healthChange: varchar("health_change").default('false'),
+  retirement: varchar("retirement").default('false'),
+  otherEvent: text("other_event"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLifeEventsSchema = createInsertSchema(lifeEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLifeEvents = z.infer<typeof insertLifeEventsSchema>;
+export type LifeEvents = typeof lifeEvents.$inferSelect;
+
+export const maritalStatusOptions = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'partnered', label: 'Partnered' },
+  { value: 'divorced', label: 'Divorced' },
+  { value: 'widowed', label: 'Widowed' },
+];
+
+export const culturalBackgroundOptions = [
+  { value: 'eastern', label: 'Eastern' },
+  { value: 'western', label: 'Western' },
+  { value: 'mixed', label: 'Mixed/Multicultural' },
+];
+
+export const educationLevelOptions = [
+  { value: 'high_school', label: 'High School' },
+  { value: 'some_college', label: 'Some College' },
+  { value: 'bachelors', label: "Bachelor's Degree" },
+  { value: 'masters', label: "Master's Degree" },
+  { value: 'doctorate', label: 'Doctorate' },
+  { value: 'professional', label: 'Professional Degree' },
+];
+
+export const incomeOptions = [
+  { value: 'under_25k', label: 'Under $25,000' },
+  { value: '25k_50k', label: '$25,000 - $50,000' },
+  { value: '50k_75k', label: '$50,000 - $75,000' },
+  { value: '75k_100k', label: '$75,000 - $100,000' },
+  { value: '100k_150k', label: '$100,000 - $150,000' },
+  { value: '150k_200k', label: '$150,000 - $200,000' },
+  { value: 'over_200k', label: 'Over $200,000' },
+];
+
+export const lifeEventOptions = [
+  { key: 'newJob', label: 'New Job or Career Change' },
+  { key: 'relocation', label: 'Relocation to New Area' },
+  { key: 'marriage', label: 'Marriage or New Partnership' },
+  { key: 'divorce', label: 'Divorce or Separation' },
+  { key: 'lossOfLovedOne', label: 'Loss of a Loved One' },
+  { key: 'newChild', label: 'New Child or Adoption' },
+  { key: 'healthChange', label: 'Significant Health Change' },
+  { key: 'retirement', label: 'Retirement' },
+];
