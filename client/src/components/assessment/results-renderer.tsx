@@ -45,6 +45,9 @@ export function ResultsRenderer({ result, assessmentName, assessmentDescription 
       {visualizationType === 'hexagon' && <HexagonChartVisualization traitScores={result.traitScores} />}
       {visualizationType === 'gauge' && <GaugeVisualization result={result} />}
       {visualizationType === 'danger_meter' && <DangerMeterVisualization traitScores={result.traitScores} />}
+      {visualizationType === 'stress_gauge' && <StressGaugeVisualization traitScores={result.traitScores} />}
+      {visualizationType === 'scorecard' && <ScorecardVisualization result={result} />}
+      {visualizationType === 'battery' && <BatteryVisualization traitScores={result.traitScores} />}
 
       {result.facetScores && result.facetScores.length > 0 && (
         <FacetScoresCard facetScores={result.facetScores} />
@@ -404,6 +407,211 @@ function FacetScoresCard({ facetScores }: { facetScores: TraitScore[] }) {
               </div>
             </div>
           ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StressGaugeVisualization({ traitScores }: { traitScores: TraitScore[] }) {
+  const stressScore = traitScores[0]?.score || 0;
+  
+  const getStressLevel = (score: number) => {
+    if (score <= 25) return { level: 'Low Stress', color: 'bg-green-500', description: 'You are managing stress well.' };
+    if (score <= 50) return { level: 'Moderate Stress', color: 'bg-yellow-500', description: 'Some stress present, but manageable.' };
+    if (score <= 75) return { level: 'High Stress', color: 'bg-orange-500', description: 'Consider stress reduction strategies.' };
+    return { level: 'Very High Stress', color: 'bg-red-500', description: 'Significant stress levels detected.' };
+  };
+  
+  const { level, color, description } = getStressLevel(stressScore);
+  
+  return (
+    <Card data-testid="card-stress-gauge">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Perceived Stress Level
+          <Tooltip>
+            <TooltipTrigger data-testid="button-stress-info">
+              <Info className="w-4 h-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[280px]">
+              Higher scores indicate greater perceived stress. This measures how unpredictable and overloaded you find your life.
+            </TooltipContent>
+          </Tooltip>
+        </CardTitle>
+        <CardDescription>Based on your responses over the past month</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex flex-col items-center">
+          <div className="relative w-48 h-24 overflow-hidden">
+            <div className="absolute inset-0 flex items-end justify-center">
+              <div className="relative w-48 h-48 rounded-full overflow-hidden" style={{ background: 'linear-gradient(to right, hsl(142, 71%, 45%), hsl(48, 96%, 53%), hsl(25, 95%, 53%), hsl(0, 72%, 51%))' }}>
+                <div className="absolute inset-2 rounded-full bg-card" />
+                <div 
+                  className="absolute w-1 h-20 bg-foreground origin-bottom left-1/2 -translate-x-1/2 bottom-1/2 transition-transform duration-1000"
+                  style={{ transform: `translateX(-50%) rotate(${(stressScore / 100) * 180 - 90}deg)` }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+            <div className="text-4xl font-bold" data-testid="text-stress-score">{Math.round(stressScore)}%</div>
+            <Badge variant="outline" className="mt-2">{level}</Badge>
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="relative h-6 w-full rounded-full overflow-hidden">
+            <div className="absolute inset-0 flex">
+              <div className="w-1/4 bg-green-500" />
+              <div className="w-1/4 bg-yellow-500" />
+              <div className="w-1/4 bg-orange-500" />
+              <div className="w-1/4 bg-red-500" />
+            </div>
+            <div 
+              className="absolute top-0 bottom-0 w-1 bg-foreground"
+              style={{ left: `${Math.min(99, stressScore)}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Low</span>
+            <span>Moderate</span>
+            <span>High</span>
+            <span>Very High</span>
+          </div>
+        </div>
+        
+        <div className="p-4 rounded-md bg-muted/50 text-center">
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScorecardVisualization({ result }: { result: AssessmentResult }) {
+  const mainTrait = result.traitScores[0];
+  const score = mainTrait?.score || 0;
+  const maxScore = mainTrait?.maxScore || 7;
+  const traitName = mainTrait?.name || 'Score';
+  
+  const getSWLSInterpretation = (score: number) => {
+    const totalScore = score * 5;
+    if (totalScore >= 31) return { level: 'Extremely Satisfied', emoji: 'Very high life satisfaction' };
+    if (totalScore >= 26) return { level: 'Satisfied', emoji: 'High life satisfaction' };
+    if (totalScore >= 21) return { level: 'Slightly Satisfied', emoji: 'Above average satisfaction' };
+    if (totalScore >= 20) return { level: 'Neutral', emoji: 'Neither satisfied nor dissatisfied' };
+    if (totalScore >= 15) return { level: 'Slightly Dissatisfied', emoji: 'Below average satisfaction' };
+    if (totalScore >= 10) return { level: 'Dissatisfied', emoji: 'Low life satisfaction' };
+    return { level: 'Extremely Dissatisfied', emoji: 'Very low life satisfaction' };
+  };
+  
+  const getFlourishingInterpretation = (score: number) => {
+    const totalScore = score * 8;
+    if (totalScore >= 48) return { level: 'High Flourishing', emoji: 'Strong psychological well-being' };
+    if (totalScore >= 40) return { level: 'Good Flourishing', emoji: 'Good psychological resources' };
+    if (totalScore >= 32) return { level: 'Moderate Flourishing', emoji: 'Average well-being' };
+    return { level: 'Low Flourishing', emoji: 'Consider well-being strategies' };
+  };
+  
+  const isSWLS = result.slug === 'swls-5';
+  const interpretation = isSWLS ? getSWLSInterpretation(score) : getFlourishingInterpretation(score);
+  const displayScore = Math.round(score * (isSWLS ? 5 : 8));
+  const displayMax = isSWLS ? 35 : 56;
+  
+  return (
+    <Card data-testid="card-scorecard">
+      <CardHeader className="text-center">
+        <CardTitle>{traitName}</CardTitle>
+        <CardDescription>{isSWLS ? 'Satisfaction With Life Scale' : 'Flourishing Scale'}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex flex-col items-center">
+          <div className="relative w-32 h-32 flex items-center justify-center rounded-full border-8 border-primary/20">
+            <div className="text-center">
+              <div className="text-3xl font-bold" data-testid="text-scorecard-score">{displayScore}</div>
+              <div className="text-sm text-muted-foreground">/{displayMax}</div>
+            </div>
+          </div>
+          <Badge className="mt-4 text-lg px-4 py-1" variant="secondary">{interpretation.level}</Badge>
+          <p className="text-sm text-muted-foreground mt-2 text-center">{interpretation.emoji}</p>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Your Score</span>
+            <span className="font-medium">{displayScore} / {displayMax}</span>
+          </div>
+          <Progress value={(displayScore / displayMax) * 100} className="h-3" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BatteryVisualization({ traitScores }: { traitScores: TraitScore[] }) {
+  const resilience = traitScores[0]?.score || 0;
+  
+  const getBatteryLevel = (score: number) => {
+    if (score >= 75) return { level: 'High Resilience', bars: 4, color: 'bg-green-500' };
+    if (score >= 50) return { level: 'Good Resilience', bars: 3, color: 'bg-blue-500' };
+    if (score >= 25) return { level: 'Moderate Resilience', bars: 2, color: 'bg-yellow-500' };
+    return { level: 'Low Resilience', bars: 1, color: 'bg-red-500' };
+  };
+  
+  const { level, bars, color } = getBatteryLevel(resilience);
+  
+  return (
+    <Card data-testid="card-battery">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Resilience Level
+          <Tooltip>
+            <TooltipTrigger data-testid="button-resilience-info">
+              <Info className="w-4 h-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[280px]">
+              Resilience is the ability to bounce back from stress, adversity, and challenges. Higher scores indicate greater resilience.
+            </TooltipContent>
+          </Tooltip>
+        </CardTitle>
+        <CardDescription>Your ability to recover from setbacks</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex flex-col items-center">
+          <div className="relative w-24 h-48">
+            <div className="absolute inset-0 border-4 border-foreground/20 rounded-lg">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-4 bg-foreground/20 rounded-t-md" />
+            </div>
+            <div className="absolute inset-2 flex flex-col-reverse gap-1 p-1">
+              {[1, 2, 3, 4].map((bar) => (
+                <div 
+                  key={bar}
+                  className={`flex-1 rounded-sm transition-all duration-500 ${bar <= bars ? color : 'bg-muted'}`}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+            <div className="text-4xl font-bold" data-testid="text-resilience-score">{Math.round(resilience)}%</div>
+            <Badge variant="outline" className="mt-2">{level}</Badge>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+          <div className={`p-2 rounded ${bars >= 1 ? 'bg-red-500/20' : 'bg-muted'}`}>Low</div>
+          <div className={`p-2 rounded ${bars >= 2 ? 'bg-yellow-500/20' : 'bg-muted'}`}>Moderate</div>
+          <div className={`p-2 rounded ${bars >= 3 ? 'bg-blue-500/20' : 'bg-muted'}`}>Good</div>
+          <div className={`p-2 rounded ${bars >= 4 ? 'bg-green-500/20' : 'bg-muted'}`}>High</div>
+        </div>
+        
+        <div className="p-4 rounded-md bg-muted/50">
+          <p className="text-sm text-muted-foreground text-center">
+            {resilience >= 75 ? 'You bounce back quickly from adversity and handle stress well.' :
+             resilience >= 50 ? 'You have good coping abilities but may take time to recover from major setbacks.' :
+             resilience >= 25 ? 'You may find it challenging to recover from stressful events. Consider building coping strategies.' :
+             'Building resilience through support systems and coping strategies may be beneficial.'}
+          </p>
         </div>
       </CardContent>
     </Card>

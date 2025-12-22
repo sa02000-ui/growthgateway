@@ -48,13 +48,17 @@ function getMaxScaleValue(inputType: string): number {
     case 'likert_5': return 5;
     case 'likert_6': return 6;
     case 'likert_7': return 7;
+    case 'likert_0_4': return 4;
     case 'binary': return 1;
     default: return 5;
   }
 }
 
 function getMinScaleValue(inputType: string): number {
-  return 1;
+  switch (inputType) {
+    case 'likert_0_4': return 0;
+    default: return 1;
+  }
 }
 
 function handleReversal(value: number, reversed: boolean, inputType: string): number {
@@ -455,7 +459,7 @@ function getIQInterpretation(percentile: number): string {
   return 'Low';
 }
 
-export function getAssessmentVisualizationType(slug: string): 'bar' | 'radar' | 'hexagon' | 'gauge' | 'danger_meter' {
+export function getAssessmentVisualizationType(slug: string): 'bar' | 'radar' | 'hexagon' | 'gauge' | 'danger_meter' | 'stress_gauge' | 'scorecard' | 'battery' {
   switch (slug) {
     case 'ipip-neo-120':
       return 'bar';
@@ -471,6 +475,14 @@ export function getAssessmentVisualizationType(slug: string): 'bar' | 'radar' | 
       return 'hexagon';
     case 'teique-sf-30':
       return 'bar';
+    case 'pss-10':
+      return 'stress_gauge';
+    case 'swls-5':
+      return 'scorecard';
+    case 'brs-6':
+      return 'battery';
+    case 'flourishing-8':
+      return 'scorecard';
     default:
       return 'bar';
   }
