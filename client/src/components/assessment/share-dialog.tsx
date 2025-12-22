@@ -36,17 +36,27 @@ export function ShareDialog({ resultId, userId, assessmentName }: ShareDialogPro
         userId,
       });
       
+      if (!response.ok) {
+        throw new Error('Failed to generate share link');
+      }
+      
       const data = await response.json();
+      if (!data.token) {
+        throw new Error('Invalid response from server');
+      }
+      
       const baseUrl = window.location.origin;
       const fullUrl = `${baseUrl}/shared/${data.token}`;
       setShareUrl(fullUrl);
       setExpiresAt(new Date(data.expiresAt).toLocaleDateString());
     } catch (error) {
+      console.error('Share link generation error:', error);
       toast({
         title: 'Error',
         description: 'Failed to generate share link. Please try again.',
         variant: 'destructive',
       });
+      setShareUrl('');
     } finally {
       setIsGenerating(false);
     }
