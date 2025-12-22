@@ -2,6 +2,10 @@ import type { Express, Request, Response } from "express";
 import { supabase } from "./db";
 import crypto from "crypto";
 
+// In-memory fallback cache for when database schema cache is stale
+const tokenCache: Map<string, string> = new Map(); // userId -> token
+const reverseCache: Map<string, string> = new Map(); // token -> userId
+
 function generateToken(): string {
   const bytes = crypto.randomBytes(8);
   const base64 = bytes.toString('base64url');
@@ -67,11 +71,23 @@ export function registerFeedbackTokenRoutes(app: Express): void {
 
       if (error) {
         console.log(`[Token Lookup] Database error:`, error.message);
+        // Check in-memory cache as fallback
+        const cachedUserId = reverseCache.get(normalizedToken);
+        if (cachedUserId) {
+          console.log(`[Token Lookup] Found in cache: ${cachedUserId}`);
+          return res.json({ userId: cachedUserId });
+        }
         return res.status(404).json({ error: "Invalid token" });
       }
       
       if (!data) {
         console.log(`[Token Lookup] No matching token found`);
+        // Check in-memory cache as fallback
+        const cachedUserId = reverseCache.get(normalizedToken);
+        if (cachedUserId) {
+          console.log(`[Token Lookup] Found in cache: ${cachedUserId}`);
+          return res.json({ userId: cachedUserId });
+        }
         return res.status(404).json({ error: "Invalid token" });
       }
 
@@ -79,6 +95,13 @@ export function registerFeedbackTokenRoutes(app: Express): void {
       res.json({ userId: data.user_id });
     } catch (error) {
       console.error("Token lookup error:", error);
+      // Check in-memory cache as fallback
+      const { token } = req.params;
+      const normalizedToken = token.trim().toLowerCase();
+      const cachedUserId = reverseCache.get(normalizedToken);
+      if (cachedUserId) {
+        return res.json({ userId: cachedUserId });
+      }
       res.status(404).json({ error: "Invalid token" });
     }
   });
@@ -87,11 +110,24 @@ export function registerFeedbackTokenRoutes(app: Express): void {
     try {
       const { userId } = req.params;
 
-      let { data } = await supabase
+      // Try database first
+      let { data, error: selectError } = await supabase
         .from('feedback_tokens')
         .select('token')
         .eq('user_id', userId)
         .single();
+
+      // If database error (schema cache stale), use in-memory fallback
+      if (selectError && selectError.code === 'PGRST205') {
+        console.log('[Token] Database schema cache stale, using in-memory fallback');
+        let cachedToken = tokenCache.get(userId);
+        if (!cachedToken) {
+          cachedToken = generateToken();
+          tokenCache.set(userId, cachedToken);
+          reverseCache.set(cachedToken, userId);
+        }
+        return res.json({ token: cachedToken });
+      }
 
       if (!data) {
         const token = generateToken();
@@ -102,7 +138,15 @@ export function registerFeedbackTokenRoutes(app: Express): void {
           .single();
 
         if (error || !newData) {
-          return res.status(500).json({ error: "Failed to generate token" });
+          // Fallback to in-memory if insert fails
+          console.log('[Token] Insert failed, using in-memory fallback');
+          let cachedToken = tokenCache.get(userId);
+          if (!cachedToken) {
+            cachedToken = token;
+            tokenCache.set(userId, cachedToken);
+            reverseCache.set(cachedToken, userId);
+          }
+          return res.json({ token: cachedToken });
         }
         data = newData;
       }
@@ -110,7 +154,15 @@ export function registerFeedbackTokenRoutes(app: Express): void {
       res.json({ token: data?.token });
     } catch (error) {
       console.error("Token fetch error:", error);
-      res.status(500).json({ error: "Failed to get token" });
+      // Final fallback
+      const { userId } = req.params;
+      let cachedToken = tokenCache.get(userId);
+      if (!cachedToken) {
+        cachedToken = generateToken();
+        tokenCache.set(userId, cachedToken);
+        reverseCache.set(cachedToken, userId);
+      }
+      res.json({ token: cachedToken });
     }
   });
 }

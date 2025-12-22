@@ -61,13 +61,25 @@ export async function registerRoutes(
 
       if (error) {
         console.error('Assessments library fetch error:', error);
-        return res.status(500).json({ error: "Failed to fetch assessments" });
+        // Fallback to seed data if database schema cache not ready
+        const fallbackData = ASSESSMENTS_SEED_DATA.map((a, index) => ({
+          id: `seed-${index}`,
+          ...a,
+          is_active: true,
+        }));
+        return res.json({ assessments: fallbackData });
       }
 
       res.json({ assessments: data || [] });
     } catch (error) {
       console.error('Assessments library error:', error);
-      res.status(500).json({ error: "Internal server error" });
+      // Fallback to seed data on any error
+      const fallbackData = ASSESSMENTS_SEED_DATA.map((a, index) => ({
+        id: `seed-${index}`,
+        ...a,
+        is_active: true,
+      }));
+      res.json({ assessments: fallbackData });
     }
   });
 
