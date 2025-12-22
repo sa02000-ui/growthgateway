@@ -69,6 +69,7 @@ server/
 - `shared/assessments/category-one-seed.ts` - Seed data for Category 1: IPIP-NEO-120, PVQ-21, SD3
 - `shared/assessments/category-two-seed.ts` - Seed data for Category 2: ICAR-16, Grit-S
 - `shared/assessments/category-three-seed.ts` - Seed data for Category 3: RIASEC-30, TEIQue-SF-30
+- `shared/assessments/category-four-seed.ts` - Seed data for Category 4: PSS-10, SWLS-5, BRS-6, Flourishing-8
 - `shared/models/chat.ts` - Chat/conversation schema (for AI integrations)
 
 ## Environment Variables
@@ -122,8 +123,11 @@ npm run dev
 - **multi_category**: Scores across multiple independent categories (RIASEC, TEIQue-SF)
 
 ## Recent Changes
+- 2024-12-22: Completed Phase 11 Category 4 well-being assessments (PSS-10, SWLS-5, BRS-6, Flourishing-8) with reverse coding
+- 2024-12-22: Added 3 new visualizations: StressGauge (PSS-10), Scorecard (SWLS/FS), Battery indicator (BRS)
+- 2024-12-22: Enhanced scoring engine with likert_0_4 scale support for 0-4 Likert responses
 - 2024-12-22: Added Share Assessment feature with copy link and email sharing options, public shared results page at /shared/:token
-- 2024-12-22: Created ResultsRenderer visualization component with 5 chart types (Bar, Radar, Hexagon, Gauge, DangerMeter)
+- 2024-12-22: Created ResultsRenderer visualization component with 8 chart types (Bar, Radar, Hexagon, Gauge, DangerMeter, StressGauge, Scorecard, Battery)
 - 2024-12-22: Built unified scoring-engine.ts supporting 5 scoring algorithms
 - 2024-12-22: Added content injection for Category 3 assessments (RIASEC-30, TEIQue-SF-30)
 - 2024-12-22: Added content injection for Category 2 assessments (ICAR-16 cognitive, Grit-S scale)
