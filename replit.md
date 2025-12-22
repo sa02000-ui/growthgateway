@@ -64,6 +64,10 @@ server/
 ## Shared Modules
 - `shared/ipip-neo-120.ts` - All 120 questions with trait assignments and +/- keying
 - `shared/scoring.ts` - Scoring logic for calculating Big Five trait percentages
+- `shared/scoring-engine.ts` - Unified scoring engine with 5 algorithms (average, summation, complex_centering, binary_correct, multi_category)
+- `shared/assessments/category-one-seed.ts` - Seed data for Category 1: IPIP-NEO-120, PVQ-21, SD3
+- `shared/assessments/category-two-seed.ts` - Seed data for Category 2: ICAR-16, Grit-S
+- `shared/assessments/category-three-seed.ts` - Seed data for Category 3: RIASEC-30, TEIQue-SF-30
 - `shared/models/chat.ts` - Chat/conversation schema (for AI integrations)
 
 ## Environment Variables
@@ -103,10 +107,23 @@ npm run dev
 - `POST /api/send-invite` - Send feedback invitation email (mock in dev)
 
 ## Database Tables
-- `assessments_library` - Stores assessment metadata (category, name, popular_equivalent, scientific_reference, description, question_count, estimated_time, is_active)
+- `assessments_library` - Stores assessment metadata (category, name, slug, scoring_algorithm, scoring_type, input_type, trait_config, question_count, estimated_time, is_active)
+- `assessment_questions` - Stores individual questions (assessment_slug, question_number, text, trait_key, facet_key, sub_category, reverse_coded, input_type, correct_option, options)
 - `feedback_tokens` - Maps secure URL tokens to user IDs for privacy-preserving feedback URLs
 
+## Scoring Algorithms
+- **average**: Calculates mean score per trait (IPIP-NEO-120, Grit-S)
+- **summation**: Sums raw Likert values per trait (Dark Triad SD3)
+- **complex_centering**: Schwartz ipsative centering (PVQ-21)
+- **binary_correct**: Counts correct answers for IQ-style tests (ICAR-16)
+- **multi_category**: Scores across multiple independent categories (RIASEC, TEIQue-SF)
+
 ## Recent Changes
+- 2024-12-22: Created ResultsRenderer visualization component with 5 chart types (Bar, Radar, Hexagon, Gauge, DangerMeter)
+- 2024-12-22: Built unified scoring-engine.ts supporting 5 scoring algorithms
+- 2024-12-22: Added content injection for Category 3 assessments (RIASEC-30, TEIQue-SF-30)
+- 2024-12-22: Added content injection for Category 2 assessments (ICAR-16 cognitive, Grit-S scale)
+- 2024-12-22: Enhanced schema with correct_option, sub_category, scoring_type fields for complex assessments
 - 2024-12-22: Integrated Explore Assessments with database-driven assessments_library table (16 research-grade assessments across 4 categories)
 - 2024-12-22: Added mock email service for peer feedback invitations with POST /api/send-invite endpoint
 - 2024-12-22: Fixed feedback token verification bug with case-insensitive token lookup

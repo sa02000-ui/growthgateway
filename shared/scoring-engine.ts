@@ -283,10 +283,12 @@ export function calculateBinaryCorrectScore(
 
   for (const question of questions) {
     const response = responses[String(question.questionNumber)];
-    if (response === undefined) continue;
+    if (response === undefined || response === '') continue;
 
     totalCount++;
-    const isCorrect = String(response) === String(question.correctOption);
+    const responseStr = String(response).trim().toUpperCase();
+    const correctStr = String(question.correctOption || '').trim().toUpperCase();
+    const isCorrect = responseStr === correctStr;
     if (isCorrect) correctCount++;
 
     if (question.subCategory) {

@@ -49,8 +49,6 @@ export const traitScoresSchema = z.object({
 
 export type TraitScores = z.infer<typeof traitScoresSchema>;
 
-export const assessmentResponsesSchema = z.record(z.string(), z.number().min(1).max(5));
-export type AssessmentResponses = z.infer<typeof assessmentResponsesSchema>;
 
 export const peerFeedback = pgTable("peer_feedback", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -433,6 +431,9 @@ export const traitConfigSchema = z.object({
 });
 
 export type TraitConfig = z.infer<typeof traitConfigSchema>;
+
+export const assessmentResponsesSchema = z.record(z.string(), z.union([z.number(), z.string()]));
+export type AssessmentResponses = z.infer<typeof assessmentResponsesSchema>;
 
 export const insertProfileHistorySchema = createInsertSchema(profileHistory).omit({
   id: true,
