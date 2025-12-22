@@ -60,6 +60,7 @@ server/
 9. **AI-Powered Growth Insights**: Personalized 3-sentence growth recommendations from AI (Senior I-O Psychologist persona)
 10. **Secure Feedback Tokens**: Privacy-preserving URL tokens (e.g., /feedback/ax79-k2-rt) instead of raw user IDs
 11. **Explore Tab**: Categorized test library with scientific validation badges (Core Personality, Behavioral & Social, Cognitive & Productivity, Well-being & Resilience)
+12. **Share Assessment Results**: Share assessment results with others via unique time-limited links (7-day expiration)
 
 ## Shared Modules
 - `shared/ipip-neo-120.ts` - All 120 questions with trait assignments and +/- keying
@@ -105,6 +106,8 @@ npm run dev
 - `GET /api/assessments-library` - Returns all assessments from database grouped by category
 - `POST /api/assessments-library/seed` - Seeds database with 16 research-grade assessments
 - `POST /api/send-invite` - Send feedback invitation email (mock in dev)
+- `POST /api/share-result` - Generate shareable link token for assessment results
+- `GET /api/shared-result/:token` - Retrieve shared assessment results (public)
 
 ## Database Tables
 - `assessments_library` - Stores assessment metadata (category, name, slug, scoring_algorithm, scoring_type, input_type, trait_config, question_count, estimated_time, is_active)
@@ -119,6 +122,7 @@ npm run dev
 - **multi_category**: Scores across multiple independent categories (RIASEC, TEIQue-SF)
 
 ## Recent Changes
+- 2024-12-22: Added Share Assessment feature with copy link and email sharing options, public shared results page at /shared/:token
 - 2024-12-22: Created ResultsRenderer visualization component with 5 chart types (Bar, Radar, Hexagon, Gauge, DangerMeter)
 - 2024-12-22: Built unified scoring-engine.ts supporting 5 scoring algorithms
 - 2024-12-22: Added content injection for Category 3 assessments (RIASEC-30, TEIQue-SF-30)
