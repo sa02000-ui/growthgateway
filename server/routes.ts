@@ -9,6 +9,7 @@ import { peerQuestions, calculatePeerScores } from "@shared/peer-feedback-questi
 import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 import { registerEmailRoutes } from "./email";
+import { registerShareResultsRoutes } from "./share-results";
 
 const ASSESSMENTS_SEED_DATA = [
   { category: "Who Am I", name: "IPIP-NEO-120", popular_equivalent: "Similar to MBTI / 16 Personalities", scientific_reference: "Goldberg (1999)", description: "The scientific gold standard for personality profiling. Measures the Big Five traits: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.", question_count: 120, estimated_time: "15-20 mins" },
@@ -36,6 +37,7 @@ export async function registerRoutes(
   registerAIInsightsRoutes(app);
   registerFeedbackTokenRoutes(app);
   registerEmailRoutes(app);
+  registerShareResultsRoutes(app);
 
   // Supabase configuration endpoint for frontend
   app.get("/api/config", (_req, res) => {

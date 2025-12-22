@@ -15,6 +15,7 @@ import { useLocation } from 'wouter';
 import questionsData from '@/data/questions.json';
 import { getCompletionPercentage, getTraitInterpretation } from '@shared/scoring';
 import type { TraitScores, AssessmentResponses } from '@shared/schema';
+import { ShareDialog } from '@/components/assessment/share-dialog';
 
 type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
 
@@ -38,6 +39,7 @@ export default function AssessmentsTab() {
   const [responses, setResponses] = useState<AssessmentResponses>({});
   const [currentPage, setCurrentPage] = useState(0);
   const [latestScores, setLatestScores] = useState<TraitScores | null>(null);
+  const [latestResultId, setLatestResultId] = useState<string | null>(null);
   const [showProfileConfirm, setShowProfileConfirm] = useState(false);
   const [profileNoChange, setProfileNoChange] = useState(false);
 
@@ -65,6 +67,7 @@ export default function AssessmentsTab() {
     },
     onSuccess: (data) => {
       setLatestScores(data.scores);
+      setLatestResultId(data.resultId);
       setState('results');
       queryClient.invalidateQueries({ queryKey: ['/api/assessment/results', user?.id] });
     },
@@ -285,9 +288,18 @@ export default function AssessmentsTab() {
           })}
         </div>
 
-        <Button onClick={() => { setState('list'); setLatestScores(null); }} className="bg-[#0f172a]" data-testid="button-done">
-          Done
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          {latestResultId && user?.id && (
+            <ShareDialog 
+              resultId={latestResultId} 
+              userId={user.id} 
+              assessmentName="IPIP-NEO-120 Personality Assessment"
+            />
+          )}
+          <Button onClick={() => { setState('list'); setLatestScores(null); setLatestResultId(null); }} className="bg-[#0f172a]" data-testid="button-done">
+            Done
+          </Button>
+        </div>
       </div>
     );
   }

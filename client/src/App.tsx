@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
 import FeedbackPage from "@/pages/feedback";
+import SharedResultsPage from "@/pages/shared-results";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/feedback/:userId" component={FeedbackPage} />
+      <Route path="/shared/:token" component={SharedResultsPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/dashboard/:rest*" component={Dashboard} />
       <Route component={NotFound} />
