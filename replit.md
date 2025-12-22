@@ -97,9 +97,19 @@ npm run dev
 - `GET /api/peer-feedback/:userId` - Get all peer feedback with averages (authenticated)
 - `GET /api/ai-insights/:userId` - Get AI-powered personalized growth insights
 - `GET /api/my-feedback-token/:userId` - Get or create secure feedback token
-- `GET /api/feedback-token/:token` - Resolve token to user ID (public)
+- `GET /api/feedback-token/:token` - Resolve token to user ID (public, case-insensitive)
+- `GET /api/assessments-library` - Returns all assessments from database grouped by category
+- `POST /api/assessments-library/seed` - Seeds database with 16 research-grade assessments
+- `POST /api/send-invite` - Send feedback invitation email (mock in dev)
+
+## Database Tables
+- `assessments_library` - Stores assessment metadata (category, name, popular_equivalent, scientific_reference, description, question_count, estimated_time, is_active)
+- `feedback_tokens` - Maps secure URL tokens to user IDs for privacy-preserving feedback URLs
 
 ## Recent Changes
+- 2024-12-22: Integrated Explore Assessments with database-driven assessments_library table (16 research-grade assessments across 4 categories)
+- 2024-12-22: Added mock email service for peer feedback invitations with POST /api/send-invite endpoint
+- 2024-12-22: Fixed feedback token verification bug with case-insensitive token lookup
 - 2024-12-21: Enhanced Family & Teams tab with interactive group creation, member management, and privacy settings
 - 2024-12-21: Added scientific tooltips for Cronbach's Alpha and Validity scores on assessment cards
 - 2024-12-21: Implemented Peer Invitation system with multi-email input and customizable message template

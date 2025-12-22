@@ -56,7 +56,7 @@ export async function registerRoutes(
       const { data, error } = await supabase
         .from('assessments_library')
         .select('*')
-        .eq('is_active', 'true')
+        .eq('is_active', true)
         .order('category', { ascending: true });
 
       if (error) {

@@ -56,7 +56,7 @@ interface LibraryAssessment {
   description: string | null;
   question_count: number | null;
   estimated_time: string | null;
-  is_active: string;
+  is_active: boolean;
 }
 
 const categoryConfig: Record<string, { name: string; subtitle: string; icon: typeof Brain; description: string }> = {
