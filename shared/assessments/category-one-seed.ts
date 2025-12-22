@@ -1,4 +1,4 @@
-import type { TraitConfig, ScoringAlgorithm, InputType } from '../schema';
+import type { TraitConfig, ScoringAlgorithm, InputType, ScoringType } from '../schema';
 
 export interface AssessmentSeedData {
   slug: string;
@@ -10,6 +10,7 @@ export interface AssessmentSeedData {
   questionCount: number;
   estimatedTime: string;
   scoringAlgorithm: ScoringAlgorithm;
+  scoringType: ScoringType;
   inputType: InputType;
   traitConfig: TraitConfig;
   questions: QuestionSeedData[];
@@ -20,7 +21,10 @@ export interface QuestionSeedData {
   text: string;
   traitKey: string;
   facetKey?: string;
+  subCategory?: string;
   reverseCoded: boolean;
+  correctOption?: string;
+  options?: { value: string; label: string }[];
 }
 
 export const BIG_FIVE_TRAIT_CONFIG: TraitConfig = {
@@ -75,6 +79,7 @@ export const IPIP_NEO_120: AssessmentSeedData = {
   questionCount: 120,
   estimatedTime: '15-20 mins',
   scoringAlgorithm: 'average',
+  scoringType: 'likert_average',
   inputType: 'likert_5',
   traitConfig: BIG_FIVE_TRAIT_CONFIG,
   questions: [
@@ -226,6 +231,7 @@ export const SCHWARTZ_PVQ_21: AssessmentSeedData = {
   questionCount: 21,
   estimatedTime: '5-7 mins',
   scoringAlgorithm: 'complex_centering',
+  scoringType: 'likert_average',
   inputType: 'likert_6',
   traitConfig: PVQ_VALUES_TRAIT_CONFIG,
   questions: [
@@ -276,6 +282,7 @@ export const SHORT_DARK_TRIAD_SD3: AssessmentSeedData = {
   questionCount: 27,
   estimatedTime: '5-7 mins',
   scoringAlgorithm: 'summation',
+  scoringType: 'likert_sum',
   inputType: 'likert_5',
   traitConfig: DARK_TRIAD_TRAIT_CONFIG,
   questions: [
