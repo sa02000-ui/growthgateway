@@ -47,107 +47,26 @@ const questions = questionsData.questions as Question[];
 const likertScale = questionsData.likertScale;
 const traitNames = questionsData.traitNames as Record<TraitKey, string>;
 
-interface Assessment {
+interface LibraryAssessment {
   id: string;
+  category: string;
   name: string;
-  description: string;
-  questionCount: number;
-  duration: string;
-  categoryId: string;
-  available: boolean;
-  scientificSource?: {
-    name: string;
-    reliability: string;
-    validityScore: number;
-  };
+  popular_equivalent: string | null;
+  scientific_reference: string | null;
+  description: string | null;
+  question_count: number | null;
+  estimated_time: string | null;
+  is_active: string;
 }
 
-const assessments: Assessment[] = [
-  {
-    id: 'ipip-neo-120',
-    name: 'IPIP-NEO-120',
-    description: 'The gold standard Big Five personality assessment measuring Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.',
-    questionCount: 120,
-    duration: '15-20 min',
-    categoryId: 'who-am-i',
-    available: true,
-    scientificSource: {
-      name: 'International Personality Item Pool',
-      reliability: "Cronbach's α: 0.85-0.92",
-      validityScore: 95,
-    },
-  },
-  {
-    id: 'big-five-60',
-    name: 'Big Five-60',
-    description: 'A shorter version of the Big Five assessment for quick personality insights.',
-    questionCount: 60,
-    duration: '8-10 min',
-    categoryId: 'who-am-i',
-    available: false,
-  },
-  {
-    id: 'eq-assessment',
-    name: 'Emotional Intelligence (EQ)',
-    description: 'Measure your ability to understand, use, and manage emotions effectively.',
-    questionCount: 40,
-    duration: '10-12 min',
-    categoryId: 'how-i-interact',
-    available: false,
-  },
-  {
-    id: 'conflict-styles',
-    name: 'Conflict Resolution Styles',
-    description: 'Discover your preferred approach to handling disagreements and conflicts.',
-    questionCount: 30,
-    duration: '8-10 min',
-    categoryId: 'how-i-interact',
-    available: false,
-  },
-  {
-    id: 'work-productivity',
-    name: 'Work Style & Productivity',
-    description: 'Understand your work preferences, focus patterns, and productivity drivers.',
-    questionCount: 45,
-    duration: '12-15 min',
-    categoryId: 'how-i-think',
-    available: false,
-  },
-  {
-    id: 'decision-making',
-    name: 'Decision-Making Style',
-    description: 'Explore how you approach decisions - analytical, intuitive, or collaborative.',
-    questionCount: 35,
-    duration: '10-12 min',
-    categoryId: 'how-i-think',
-    available: false,
-  },
-  {
-    id: 'resilience',
-    name: 'Resilience Assessment',
-    description: 'Measure your capacity to recover from setbacks and adapt to change.',
-    questionCount: 25,
-    duration: '6-8 min',
-    categoryId: 'how-i-feel',
-    available: false,
-  },
-  {
-    id: 'burnout-risk',
-    name: 'Burnout Risk Indicator',
-    description: 'Evaluate your current stress levels and risk factors for burnout.',
-    questionCount: 22,
-    duration: '5-7 min',
-    categoryId: 'how-i-feel',
-    available: false,
-  },
-];
+const categoryConfig: Record<string, { name: string; subtitle: string; icon: typeof Brain; description: string }> = {
+  'Who Am I': { name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are' },
+  'How I Think': { name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns' },
+  'How I Interact': { name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors' },
+  'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience' },
+};
 
-const categories = [
-  { id: 'who-am-i', name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are' },
-  { id: 'how-i-think', name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns' },
-  { id: 'how-i-interact', name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors' },
-  { id: 'how-i-feel', name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience' },
-];
+const categoryOrder = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'];
 
 type ViewState = 'library' | 'taking' | 'results' | 'history';
 
@@ -165,16 +84,22 @@ export default function ExploreAssessmentsTab() {
   const questionsPerPage = 10;
   const totalPages = Math.ceil(questions.length / questionsPerPage);
 
+  const { data: libraryData, isLoading: libraryLoading } = useQuery<{ assessments: LibraryAssessment[] }>({
+    queryKey: ['/api/assessments-library'],
+  });
+
   const { data: resultsData, isLoading: resultsLoading } = useQuery<{ results: Array<Record<string, unknown>> }>({
     queryKey: ['/api/assessment/results', user?.id],
     enabled: !!user?.id,
   });
 
+  const libraryAssessments = libraryData?.assessments || [];
   const results = resultsData?.results || [];
 
-  const getLastTaken = (assessmentId: string) => {
+  const getLastTaken = (assessmentName: string) => {
     const assessmentResults = results.filter(r => 
-      (r.assessment_type as string)?.toLowerCase().includes(assessmentId.split('-')[0])
+      (r.assessment_type as string)?.toLowerCase().includes(assessmentName.toLowerCase().split(' ')[0]) ||
+      (r.assessment_type as string)?.toLowerCase() === assessmentName.toLowerCase()
     );
     if (assessmentResults.length === 0) return null;
     const sorted = assessmentResults.sort((a, b) => 
@@ -183,11 +108,18 @@ export default function ExploreAssessmentsTab() {
     return new Date(sorted[0].completed_at as string);
   };
 
-  const getHistoryCount = (assessmentId: string) => {
+  const getHistoryCount = (assessmentName: string) => {
     return results.filter(r => 
-      (r.assessment_type as string)?.toLowerCase().includes(assessmentId.split('-')[0])
+      (r.assessment_type as string)?.toLowerCase().includes(assessmentName.toLowerCase().split(' ')[0]) ||
+      (r.assessment_type as string)?.toLowerCase() === assessmentName.toLowerCase()
     ).length;
   };
+
+  const groupedAssessments = categoryOrder.map(category => ({
+    category,
+    config: categoryConfig[category],
+    assessments: libraryAssessments.filter(a => a.category === category),
+  })).filter(group => group.assessments.length > 0);
 
   const submitMutation = useMutation({
     mutationFn: async (data: { userId: string; responses: AssessmentResponses }) => {
@@ -250,11 +182,6 @@ export default function ExploreAssessmentsTab() {
   };
 
   const completionPct = getCompletionPercentage(responses);
-
-  const groupedAssessments = categories.map(category => ({
-    ...category,
-    assessments: assessments.filter(a => a.categoryId === category.id),
-  }));
 
   if (state === 'taking') {
     const pageQuestions = getCurrentPageQuestions();
@@ -545,141 +472,141 @@ export default function ExploreAssessmentsTab() {
         )}
       </div>
 
-      {groupedAssessments.map((category) => (
-        <div key={category.id} className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <category.icon className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">{category.name}</h2>
-              <p className="text-sm text-muted-foreground">{category.description}</p>
-            </div>
-          </div>
+      {libraryLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : groupedAssessments.length === 0 ? (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center">
+            <Brain className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground">No assessments available yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Check back soon for new assessments</p>
+          </CardContent>
+        </Card>
+      ) : (
+        groupedAssessments.map((group) => {
+          const CategoryIcon = group.config.icon;
+          return (
+            <div key={group.category} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CategoryIcon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">{group.config.name}</h2>
+                  <p className="text-sm text-muted-foreground">{group.config.description}</p>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {category.assessments.map((assessment) => {
-              const lastTaken = getLastTaken(assessment.id);
-              const historyCount = getHistoryCount(assessment.id);
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {group.assessments.map((assessment) => {
+                  const lastTaken = getLastTaken(assessment.name);
+                  const historyCount = getHistoryCount(assessment.name);
+                  const isImplemented = assessment.name === 'IPIP-NEO-120';
 
-              return (
-                <Card 
-                  key={assessment.id} 
-                  className={`bg-card border-border ${!assessment.available ? 'opacity-70' : ''}`}
-                  data-testid={`card-assessment-${assessment.id}`}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2 flex-wrap">
-                          {assessment.name}
-                          {assessment.scientificSource && (
-                            <Badge 
-                              variant="outline" 
-                              className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
-                              data-testid="badge-scientific-source"
-                            >
-                              <Award className="w-3 h-3" />
-                              Scientific Source
+                  return (
+                    <Card 
+                      key={assessment.id} 
+                      className={`bg-card border-border ${!isImplemented ? 'opacity-70' : ''}`}
+                      data-testid={`card-assessment-${assessment.id}`}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2 flex-wrap">
+                              {assessment.name}
+                              {assessment.popular_equivalent && (
+                                <Badge 
+                                  variant="secondary" 
+                                  className="text-xs"
+                                  data-testid="badge-popular-equivalent"
+                                >
+                                  {assessment.popular_equivalent}
+                                </Badge>
+                              )}
+                            </CardTitle>
+                            <CardDescription className="mt-1 text-sm">
+                              {assessment.description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {assessment.question_count && (
+                            <Badge variant="secondary" className="text-xs">
+                              {assessment.question_count} questions
                             </Badge>
                           )}
-                        </CardTitle>
-                        <CardDescription className="mt-1 text-sm">
-                          {assessment.description}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {assessment.questionCount} questions
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        {assessment.duration}
-                      </Badge>
-                      {lastTaken && (
-                        <Badge variant="outline" className="text-xs gap-1">
-                          <Clock className="w-3 h-3" />
-                          Last: {lastTaken.toLocaleDateString()}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {assessment.scientificSource && (
-                      <div className="p-3 bg-muted/50 rounded-md space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-                          <BookOpen className="w-3.5 h-3.5 text-primary" />
-                          {assessment.scientificSource.name}
+                          {assessment.estimated_time && (
+                            <Badge variant="secondary" className="text-xs">
+                              {assessment.estimated_time}
+                            </Badge>
+                          )}
+                          {lastTaken && (
+                            <Badge variant="outline" className="text-xs gap-1">
+                              <Clock className="w-3 h-3" />
+                              Last: {lastTaken.toLocaleDateString()}
+                            </Badge>
+                          )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="flex items-center gap-1 cursor-help">
-                                <CheckCircle2 className="w-3 h-3 text-green-600" />
-                                {assessment.scientificSource.reliability}
-                                <Info className="w-3 h-3 text-muted-foreground" />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-xs font-medium mb-1">Internal Consistency</p>
-                              <p className="text-xs">Cronbach's alpha measures how reliably a test measures what it claims. Values above 0.80 indicate excellent reliability, meaning the assessment produces consistent results.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="flex items-center gap-1 cursor-help">
-                                <CheckCircle2 className="w-3 h-3 text-green-600" />
-                                Validity: {assessment.scientificSource.validityScore}%
-                                <Info className="w-3 h-3 text-muted-foreground" />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-xs font-medium mb-1">Scientific Validity</p>
-                              <p className="text-xs">Validity score indicates how well the assessment measures actual personality traits, based on peer-reviewed research and correlation with other validated measures.</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    )}
 
-                    <div className="pt-2 flex gap-2">
-                      {assessment.available ? (
-                        <>
-                          <Button 
-                            onClick={() => handleStartClick(assessment.id)} 
-                            className="flex-1 gap-2" 
-                            data-testid={`button-start-${assessment.id}`}
-                          >
-                            <Play className="w-4 h-4" />
-                            {lastTaken ? 'Retake Assessment' : 'Start Assessment'}
-                          </Button>
-                          {historyCount > 0 && (
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setState('history')}
-                              className="gap-2"
-                              data-testid={`button-history-${assessment.id}`}
-                            >
-                              <History className="w-4 h-4" />
-                              History ({historyCount})
+                        {assessment.scientific_reference && (
+                          <div className="p-3 bg-muted/50 rounded-md">
+                            <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                              <BookOpen className="w-3.5 h-3.5 text-primary" />
+                              <span>{assessment.scientific_reference}</span>
+                              <Badge 
+                                variant="outline" 
+                                className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
+                              >
+                                <Award className="w-3 h-3" />
+                                Peer Reviewed
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-2 flex gap-2">
+                          {isImplemented ? (
+                            <>
+                              <Button 
+                                onClick={() => handleStartClick(assessment.id)} 
+                                className="flex-1 gap-2" 
+                                data-testid={`button-start-${assessment.id}`}
+                              >
+                                <Play className="w-4 h-4" />
+                                {lastTaken ? 'Retake Assessment' : 'Start Assessment'}
+                              </Button>
+                              {historyCount > 0 && (
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setState('history')}
+                                  className="gap-2"
+                                  data-testid={`button-history-${assessment.id}`}
+                                >
+                                  <History className="w-4 h-4" />
+                                  History ({historyCount})
+                                </Button>
+                              )}
+                            </>
+                          ) : (
+                            <Button variant="outline" className="w-full gap-2" disabled>
+                              <Lock className="w-4 h-4" />
+                              Coming Soon
                             </Button>
                           )}
-                        </>
-                      ) : (
-                        <Button variant="outline" className="w-full gap-2" disabled>
-                          <Lock className="w-4 h-4" />
-                          Coming Soon
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
+      )}
 
       <Dialog open={showProfileConfirm} onOpenChange={setShowProfileConfirm}>
         <DialogContent className="sm:max-w-md">

@@ -1,0 +1,191 @@
+We are building the 'Explore Assessments' tab. Do not guess the data. Use the EXACT JSON payload below to seed the database.
+
+1. DATABASE SCHEMA (Library Layer)
+
+Create a table assessments_library with columns:
+
+id (uuid, primary key)
+
+category (Enum: 'Who Am I', 'How I Think', 'How I Interact', 'How I Feel')
+
+name (String)
+
+popular_equivalent (String - e.g., 'Similar to MBTI')
+
+scientific_reference (String)
+
+description (Text)
+
+question_count (Int)
+
+estimated_time (String)
+
+is_active (Boolean, default true)
+
+2. DATA SEEDING (Run this SQL/Script)
+
+Insert these exact rows into assessments_library:
+
+JSON
+
+[
+  {
+    "category": "Who Am I",
+    "name": "IPIP-NEO-120",
+    "popular_equivalent": "Similar to MBTI / 16 Personalities",
+    "scientific_reference": "Goldberg (1999)",
+    "description": "The scientific gold standard for personality profiling. Measures the Big Five traits: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.",
+    "question_count": 120,
+    "estimated_time": "15-20 mins"
+  },
+  {
+    "category": "Who Am I",
+    "name": "Schwartz Portrait Values (PVQ)",
+    "popular_equivalent": "Similar to Enneagram",
+    "scientific_reference": "Schwartz (1992)",
+    "description": "Identifies your core drivers and motivations (e.g., Tradition, Power, Benevolence) rather than just behavior.",
+    "question_count": 21,
+    "estimated_time": "5-7 mins"
+  },
+  {
+    "category": "Who Am I",
+    "name": "VIA Inventory of Strengths",
+    "popular_equivalent": "Similar to CliftonStrengths",
+    "scientific_reference": "Peterson & Seligman (2004)",
+    "description": "Focuses on positive psychology to identify your top character strengths and virtues.",
+    "question_count": 24,
+    "estimated_time": "5-8 mins"
+  },
+  {
+    "category": "Who Am I",
+    "name": "Short Dark Triad (SD3)",
+    "popular_equivalent": "Dark Side Profiling",
+    "scientific_reference": "Paulhus & Jones (2011)",
+    "description": "Measures the three socially aversive traits: Machiavellianism, Narcissism, and Psychopathy. Useful for leadership derailer awareness.",
+    "question_count": 27,
+    "estimated_time": "5-7 mins"
+  },
+  {
+    "category": "How I Think",
+    "name": "ICAR-16 Cognitive Ability",
+    "popular_equivalent": "Similar to IQ Test",
+    "scientific_reference": "Condon & Revelle (2014)",
+    "description": "An objective measure of Matrix Reasoning, 3D Rotation, and Verbal Reasoning skills.",
+    "question_count": 16,
+    "estimated_time": "10-12 mins"
+  },
+  {
+    "category": "How I Think",
+    "name": "Short Grit Scale (Grit-S)",
+    "popular_equivalent": "Hustle / Perseverance Score",
+    "scientific_reference": "Duckworth & Quinn (2009)",
+    "description": "Measures your passion and perseverance for long-term goals, a key predictor of success.",
+    "question_count": 8,
+    "estimated_time": "2-3 mins"
+  },
+  {
+    "category": "How I Think",
+    "name": "Need for Cognition (NCS-6)",
+    "popular_equivalent": "Curiosity Quotient",
+    "scientific_reference": "Cacioppo & Petty (1982)",
+    "description": "Measures the tendency to engage in and enjoy thinking. Distinguishes 'Deep Thinkers' from 'Shortcut Takers'.",
+    "question_count": 6,
+    "estimated_time": "2 mins"
+  },
+  {
+    "category": "How I Think",
+    "name": "General Decision Making Style",
+    "popular_equivalent": "Decision Style Profile",
+    "scientific_reference": "Scott & Bruce (1995)",
+    "description": "Analyzes how you make decisions: Rational, Intuitive, Dependent, Avoidant, or Spontaneous.",
+    "question_count": 25,
+    "estimated_time": "5-8 mins"
+  },
+  {
+    "category": "How I Interact",
+    "name": "TEIQue-SF",
+    "popular_equivalent": "Emotional Intelligence (EQ)",
+    "scientific_reference": "Petrides (2009)",
+    "description": "Measures global emotional intelligence, including well-being, self-control, and sociability.",
+    "question_count": 30,
+    "estimated_time": "7-10 mins"
+  },
+  {
+    "category": "How I Interact",
+    "name": "O*NET Interest Profiler",
+    "popular_equivalent": "Holland Codes / Career Aptitude",
+    "scientific_reference": "Rounds et al. (1999)",
+    "description": "Maps your interests to the 6 RIASEC themes (Realistic, Investigative, Artistic, etc.) to find vocational fit.",
+    "question_count": 60,
+    "estimated_time": "10-15 mins"
+  },
+  {
+    "category": "How I Interact",
+    "name": "Experiences in Close Relationships",
+    "popular_equivalent": "Similar to Love Languages / Attachment",
+    "scientific_reference": "Fraley et al. (2000)",
+    "description": "Measures Attachment Style (Secure, Anxious, Avoidant) in close relationships.",
+    "question_count": 12,
+    "estimated_time": "3-5 mins"
+  },
+  {
+    "category": "How I Interact",
+    "name": "Rahim Organizational Conflict",
+    "popular_equivalent": "Conflict Style (Thomas-Kilmann)",
+    "scientific_reference": "Rahim (1983)",
+    "description": "Identifies how you handle conflict: Competing, Collaborating, Compromising, Avoiding, or Accommodating.",
+    "question_count": 28,
+    "estimated_time": "6-8 mins"
+  },
+  {
+    "category": "How I Feel",
+    "name": "Perceived Stress Scale (PSS-10)",
+    "popular_equivalent": "Stress Level Test",
+    "scientific_reference": "Cohen (1983)",
+    "description": "The most widely used instrument for measuring the perception of stress in daily life.",
+    "question_count": 10,
+    "estimated_time": "3 mins"
+  },
+  {
+    "category": "How I Feel",
+    "name": "Satisfaction With Life Scale",
+    "popular_equivalent": "Happiness Index",
+    "scientific_reference": "Diener (1985)",
+    "description": "A short, valid measure of global life satisfaction and subjective well-being.",
+    "question_count": 5,
+    "estimated_time": "1-2 mins"
+  },
+  {
+    "category": "How I Feel",
+    "name": "Brief Resilience Scale",
+    "popular_equivalent": "Bounce-Back Factor",
+    "scientific_reference": "Smith et al. (2008)",
+    "description": "Measures the ability to bounce back or recover from stress and adversity.",
+    "question_count": 6,
+    "estimated_time": "2 mins"
+  },
+  {
+    "category": "How I Feel",
+    "name": "Flourishing Scale",
+    "popular_equivalent": "Well-being Index",
+    "scientific_reference": "Diener (2009)",
+    "description": "Measures self-perceived success in relationships, self-esteem, purpose, and optimism.",
+    "question_count": 8,
+    "estimated_time": "2-3 mins"
+  }
+]
+3. UI UPDATE (Explore Tab)
+
+Update the 'Explore Assessments' page to fetch from assessments_library.
+
+Group the cards visually by the category column.
+
+Display the popular_equivalent prominently (e.g., as a badge or subtitle) so users understand the value instantly.
+
+Show 'Last Taken: [Date]' if a result exists in results_log.
+
+4. BUG FIXES
+
+Invalid Link Bug: Update server/routes.ts to debug the GET /api/feedback/verify/:token logic. It is falsely rejecting valid tokens.
+
+Email Engine: Implement server/email.ts with a basic sendInvite function (mock logger for now).

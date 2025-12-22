@@ -360,6 +360,28 @@ export const profileHistory = pgTable("profile_history", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const assessmentCategoryEnum = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'] as const;
+export type AssessmentCategory = typeof assessmentCategoryEnum[number];
+
+export const assessmentsLibrary = pgTable("assessments_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: varchar("category").notNull(),
+  name: varchar("name").notNull(),
+  popularEquivalent: varchar("popular_equivalent"),
+  scientificReference: varchar("scientific_reference"),
+  description: text("description"),
+  questionCount: integer("question_count"),
+  estimatedTime: varchar("estimated_time"),
+  isActive: varchar("is_active").notNull().default('true'),
+});
+
+export const insertAssessmentsLibrarySchema = createInsertSchema(assessmentsLibrary).omit({
+  id: true,
+});
+
+export type InsertAssessmentsLibrary = z.infer<typeof insertAssessmentsLibrarySchema>;
+export type AssessmentsLibrary = typeof assessmentsLibrary.$inferSelect;
+
 export const insertProfileHistorySchema = createInsertSchema(profileHistory).omit({
   id: true,
   createdAt: true,

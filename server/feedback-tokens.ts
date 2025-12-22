@@ -55,17 +55,27 @@ export function registerFeedbackTokenRoutes(app: Express): void {
   app.get("/api/feedback-token/:token", async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
+      const normalizedToken = token.trim().toLowerCase();
+      
+      console.log(`[Token Lookup] Searching for token: "${normalizedToken}"`);
 
       const { data, error } = await supabase
         .from('feedback_tokens')
-        .select('user_id')
-        .eq('token', token)
+        .select('user_id, token')
+        .ilike('token', normalizedToken)
         .single();
 
-      if (error || !data) {
+      if (error) {
+        console.log(`[Token Lookup] Database error:`, error.message);
+        return res.status(404).json({ error: "Invalid token" });
+      }
+      
+      if (!data) {
+        console.log(`[Token Lookup] No matching token found`);
         return res.status(404).json({ error: "Invalid token" });
       }
 
+      console.log(`[Token Lookup] Found user_id: ${data.user_id}`);
       res.json({ userId: data.user_id });
     } catch (error) {
       console.error("Token lookup error:", error);
