@@ -363,11 +363,14 @@ export const profileHistory = pgTable("profile_history", {
 export const assessmentCategoryEnum = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'] as const;
 export type AssessmentCategory = typeof assessmentCategoryEnum[number];
 
-export const inputTypeEnum = ['likert_5', 'likert_6', 'likert_7', 'binary', 'choice'] as const;
+export const inputTypeEnum = ['likert_5', 'likert_6', 'likert_7', 'binary', 'choice', 'multiple_choice'] as const;
 export type InputType = typeof inputTypeEnum[number];
 
-export const scoringAlgorithmEnum = ['average', 'summation', 'complex_centering'] as const;
+export const scoringAlgorithmEnum = ['average', 'summation', 'complex_centering', 'binary_correct', 'multi_category'] as const;
 export type ScoringAlgorithm = typeof scoringAlgorithmEnum[number];
+
+export const scoringTypeEnum = ['likert_sum', 'likert_average', 'binary_correct', 'multi_category'] as const;
+export type ScoringType = typeof scoringTypeEnum[number];
 
 export const assessmentsLibrary = pgTable("assessments_library", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -380,6 +383,7 @@ export const assessmentsLibrary = pgTable("assessments_library", {
   questionCount: integer("question_count"),
   estimatedTime: varchar("estimated_time"),
   scoringAlgorithm: varchar("scoring_algorithm").notNull().default('average'),
+  scoringType: varchar("scoring_type").notNull().default('likert_average'),
   inputType: varchar("input_type").notNull().default('likert_5'),
   traitConfig: jsonb("trait_config"),
   isActive: varchar("is_active").notNull().default('true'),
@@ -399,8 +403,11 @@ export const assessmentQuestions = pgTable("assessment_questions", {
   text: text("text").notNull(),
   traitKey: varchar("trait_key").notNull(),
   facetKey: varchar("facet_key"),
+  subCategory: varchar("sub_category"),
   reverseCoded: varchar("reverse_coded").notNull().default('false'),
   inputType: varchar("input_type").notNull().default('likert_5'),
+  correctOption: varchar("correct_option"),
+  options: jsonb("options"),
 });
 
 export const insertAssessmentQuestionSchema = createInsertSchema(assessmentQuestions).omit({
