@@ -363,15 +363,25 @@ export const profileHistory = pgTable("profile_history", {
 export const assessmentCategoryEnum = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'] as const;
 export type AssessmentCategory = typeof assessmentCategoryEnum[number];
 
+export const inputTypeEnum = ['likert_5', 'likert_6', 'likert_7', 'binary', 'choice'] as const;
+export type InputType = typeof inputTypeEnum[number];
+
+export const scoringAlgorithmEnum = ['average', 'summation', 'complex_centering'] as const;
+export type ScoringAlgorithm = typeof scoringAlgorithmEnum[number];
+
 export const assessmentsLibrary = pgTable("assessments_library", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   category: varchar("category").notNull(),
   name: varchar("name").notNull(),
+  slug: varchar("slug").notNull().default(''),
   popularEquivalent: varchar("popular_equivalent"),
   scientificReference: varchar("scientific_reference"),
   description: text("description"),
   questionCount: integer("question_count"),
   estimatedTime: varchar("estimated_time"),
+  scoringAlgorithm: varchar("scoring_algorithm").notNull().default('average'),
+  inputType: varchar("input_type").notNull().default('likert_5'),
+  traitConfig: jsonb("trait_config"),
   isActive: varchar("is_active").notNull().default('true'),
 });
 
@@ -381,6 +391,41 @@ export const insertAssessmentsLibrarySchema = createInsertSchema(assessmentsLibr
 
 export type InsertAssessmentsLibrary = z.infer<typeof insertAssessmentsLibrarySchema>;
 export type AssessmentsLibrary = typeof assessmentsLibrary.$inferSelect;
+
+export const assessmentQuestions = pgTable("assessment_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assessmentSlug: varchar("assessment_slug").notNull(),
+  questionNumber: integer("question_number").notNull(),
+  text: text("text").notNull(),
+  traitKey: varchar("trait_key").notNull(),
+  facetKey: varchar("facet_key"),
+  reverseCoded: varchar("reverse_coded").notNull().default('false'),
+  inputType: varchar("input_type").notNull().default('likert_5'),
+});
+
+export const insertAssessmentQuestionSchema = createInsertSchema(assessmentQuestions).omit({
+  id: true,
+});
+
+export type InsertAssessmentQuestion = z.infer<typeof insertAssessmentQuestionSchema>;
+export type AssessmentQuestion = typeof assessmentQuestions.$inferSelect;
+
+export const traitConfigSchema = z.object({
+  traits: z.array(z.object({
+    key: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    color: z.string().optional(),
+  })),
+  facets: z.array(z.object({
+    key: z.string(),
+    name: z.string(),
+    parentTrait: z.string(),
+  })).optional(),
+  populationAverages: z.record(z.string(), z.number()).optional(),
+});
+
+export type TraitConfig = z.infer<typeof traitConfigSchema>;
 
 export const insertProfileHistorySchema = createInsertSchema(profileHistory).omit({
   id: true,
