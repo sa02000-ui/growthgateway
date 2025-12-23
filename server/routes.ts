@@ -10,8 +10,18 @@ import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
-import { getAssessmentBySlug } from "./assessment-loader";
 import { calculateAssessmentScore } from "@shared/scoring-engine";
+
+// Import all assessment seed data
+import { IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3 } from "@shared/assessments/category-one-seed";
+import { ICAR_16, GRIT_SCALE_8 } from "@shared/assessments/category-two-seed";
+import { RIASEC_30, TEIQUE_SF_30 } from "@shared/assessments/category-three-seed";
+import { 
+  PSS_10_CONFIG, PSS_10_QUESTIONS,
+  SWLS_CONFIG, SWLS_QUESTIONS,
+  BRS_CONFIG, BRS_QUESTIONS,
+  FS_CONFIG, FS_QUESTIONS
+} from "@shared/assessments/category-four-seed";
 
 const ASSESSMENTS_SEED_DATA = [
   { category: "Who Am I", name: "IPIP-NEO-120", popular_equivalent: "Similar to MBTI / 16 Personalities", scientific_reference: "Goldberg (1999)", description: "The scientific gold standard for personality profiling. Measures the Big Five traits: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.", question_count: 120, estimated_time: "15-20 mins" },
@@ -54,6 +64,65 @@ export async function registerRoutes(
     res.json({ status: "ok" });
   });
 
+  // Build static assessment library with UUIDs from seed data
+  const buildAssessmentLibrary = () => {
+    const allSeedData = [
+      IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3,
+      ICAR_16, GRIT_SCALE_8, RIASEC_30, TEIQUE_SF_30,
+    ];
+    const cat4Configs = [PSS_10_CONFIG, SWLS_CONFIG, BRS_CONFIG, FS_CONFIG];
+    
+    // Use slug as deterministic UUID seed
+    const generateId = (slug: string) => {
+      const hash = slug.split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0);
+      return `${Math.abs(hash).toString(16).padStart(8, '0')}-0000-4000-8000-000000000000`;
+    };
+    
+    const library: Record<string, unknown>[] = [];
+    
+    for (const a of allSeedData) {
+      library.push({
+        id: generateId(a.slug),
+        slug: a.slug,
+        category: a.category,
+        name: a.name,
+        popular_equivalent: a.popularEquivalent,
+        scientific_reference: a.scientificReference,
+        description: a.description,
+        question_count: a.questionCount,
+        estimated_time: a.estimatedTime,
+        scoring_algorithm: a.scoringAlgorithm,
+        scoring_type: a.scoringType,
+        input_type: a.inputType,
+        trait_config: a.traitConfig,
+        is_active: true,
+      });
+    }
+    
+    for (const c of cat4Configs) {
+      library.push({
+        id: generateId(c.slug),
+        slug: c.slug,
+        category: c.category,
+        name: c.name,
+        popular_equivalent: c.popular_equivalent,
+        scientific_reference: c.scientific_reference,
+        description: c.description,
+        question_count: c.question_count,
+        estimated_time: c.estimated_time,
+        scoring_algorithm: c.scoring_algorithm,
+        scoring_type: c.scoring_type,
+        input_type: c.input_type,
+        trait_config: c.trait_config,
+        cronbach_alpha: c.cronbach_alpha,
+        validity_score: c.validity_score,
+        is_active: true,
+      });
+    }
+    
+    return library;
+  };
+
   // Get all assessments from library
   app.get("/api/assessments-library", async (_req, res) => {
     try {
@@ -63,69 +132,419 @@ export async function registerRoutes(
         .eq('is_active', true)
         .order('category', { ascending: true });
 
-      if (error) {
-        console.error('Assessments library fetch error:', error);
-        // Fallback to seed data if database schema cache not ready
-        const fallbackData = ASSESSMENTS_SEED_DATA.map((a, index) => ({
-          id: `seed-${index}`,
-          ...a,
-          is_active: true,
-        }));
-        return res.json({ assessments: fallbackData });
+      if (error || !data || data.length === 0) {
+        // Use static seed data with proper IDs
+        return res.json({ assessments: buildAssessmentLibrary() });
       }
 
-      res.json({ assessments: data || [] });
+      res.json({ assessments: data });
     } catch (error) {
       console.error('Assessments library error:', error);
-      // Fallback to seed data on any error
-      const fallbackData = ASSESSMENTS_SEED_DATA.map((a, index) => ({
-        id: `seed-${index}`,
-        ...a,
-        is_active: true,
-      }));
-      res.json({ assessments: fallbackData });
+      res.json({ assessments: buildAssessmentLibrary() });
     }
   });
 
-  // Seed assessments library (run once)
+  // Seed assessments library and questions (comprehensive seed)
   app.post("/api/assessments-library/seed", async (_req, res) => {
     try {
-      const { data: existing } = await supabase
-        .from('assessments_library')
+      // Check if questions already seeded
+      const { data: existingQuestions } = await supabase
+        .from('assessment_questions')
         .select('id')
         .limit(1);
 
-      if (existing && existing.length > 0) {
-        return res.json({ message: "Already seeded", count: existing.length });
+      if (existingQuestions && existingQuestions.length > 0) {
+        return res.json({ message: "Already seeded with questions", count: existingQuestions.length });
       }
 
-      const { data, error } = await supabase
-        .from('assessments_library')
-        .insert(ASSESSMENTS_SEED_DATA)
-        .select();
+      // Build comprehensive seed data with all metadata
+      const allAssessments = [
+        IPIP_NEO_120,
+        SCHWARTZ_PVQ_21,
+        SHORT_DARK_TRIAD_SD3,
+        ICAR_16,
+        GRIT_SCALE_8,
+        RIASEC_30,
+        TEIQUE_SF_30,
+      ];
 
-      if (error) {
-        console.error('Seed error:', error);
-        return res.status(500).json({ error: "Failed to seed assessments", details: error.message });
+      // Category 4 assessments have different structure
+      const category4Configs = [
+        { config: PSS_10_CONFIG, questions: PSS_10_QUESTIONS },
+        { config: SWLS_CONFIG, questions: SWLS_QUESTIONS },
+        { config: BRS_CONFIG, questions: BRS_QUESTIONS },
+        { config: FS_CONFIG, questions: FS_QUESTIONS },
+      ];
+
+      let totalQuestions = 0;
+      let assessmentsUpdated = 0;
+
+      // Get all existing assessments for flexible matching
+      const { data: allExisting } = await supabase.from('assessments_library').select('id, name');
+      const existingMap = new Map((allExisting || []).map(a => [a.name.toLowerCase(), a]));
+      
+      // Flexible name matching function
+      const findAssessment = (seedName: string) => {
+        const lower = seedName.toLowerCase();
+        // Exact match
+        if (existingMap.has(lower)) return existingMap.get(lower);
+        // Keyword matching
+        for (const [key, val] of existingMap) {
+          if (lower.includes(key) || key.includes(lower.split(' ')[0])) return val;
+          // Match by key words
+          const seedWords = lower.split(/[\s\-()]+/).filter(w => w.length > 2);
+          const dbWords = key.split(/[\s\-()]+/).filter(w => w.length > 2);
+          const commonWords = seedWords.filter(w => dbWords.includes(w));
+          if (commonWords.length >= 2) return val;
+        }
+        return null;
+      };
+
+      // Process category 1-3 assessments
+      for (const assessment of allAssessments) {
+        // Find existing assessment by flexible name matching
+        const existing = findAssessment(assessment.name);
+
+        let assessmentId: string;
+
+        if (existing) {
+          assessmentId = existing.id;
+          // Update with full metadata
+          await supabase
+            .from('assessments_library')
+            .update({
+              slug: assessment.slug,
+              scoring_algorithm: assessment.scoringAlgorithm,
+              scoring_type: assessment.scoringType,
+              input_type: assessment.inputType,
+              trait_config: assessment.traitConfig,
+            })
+            .eq('id', assessmentId);
+          assessmentsUpdated++;
+        } else {
+          // Insert new assessment
+          const { data: newAssessment } = await supabase
+            .from('assessments_library')
+            .insert({
+              category: assessment.category,
+              name: assessment.name,
+              popular_equivalent: assessment.popularEquivalent,
+              scientific_reference: assessment.scientificReference,
+              description: assessment.description,
+              question_count: assessment.questionCount,
+              estimated_time: assessment.estimatedTime,
+              slug: assessment.slug,
+              scoring_algorithm: assessment.scoringAlgorithm,
+              scoring_type: assessment.scoringType,
+              input_type: assessment.inputType,
+              trait_config: assessment.traitConfig,
+              is_active: true,
+            })
+            .select()
+            .single();
+          
+          if (newAssessment) {
+            assessmentId = newAssessment.id;
+            assessmentsUpdated++;
+          } else continue;
+        }
+
+        // Insert questions
+        const questionsToInsert = assessment.questions.map(q => ({
+          assessment_id: assessmentId,
+          question_number: q.questionNumber,
+          text: q.text,
+          trait_key: q.traitKey,
+          facet_key: q.facetKey || null,
+          sub_category: q.subCategory || null,
+          reverse_coded: q.reverseCoded,
+          correct_option: q.correctOption || null,
+          options: q.options || null,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('assessment_questions')
+          .insert(questionsToInsert);
+
+        if (!insertError) {
+          totalQuestions += questionsToInsert.length;
+        }
       }
 
-      res.json({ success: true, count: data?.length || 0 });
+      // Process category 4 assessments (different structure)
+      for (const { config, questions } of category4Configs) {
+        // Find by flexible matching
+        const existing = findAssessment(config.name);
+
+        let assessmentId: string;
+
+        if (existing) {
+          assessmentId = existing.id;
+          // Update with full metadata
+          await supabase
+            .from('assessments_library')
+            .update({
+              slug: config.slug,
+              scoring_algorithm: config.scoring_algorithm,
+              scoring_type: config.scoring_type,
+              input_type: config.input_type,
+              trait_config: config.trait_config,
+              cronbach_alpha: config.cronbach_alpha,
+              validity_score: config.validity_score,
+            })
+            .eq('id', assessmentId);
+          assessmentsUpdated++;
+        } else {
+          // Insert new assessment
+          const { data: newAssessment } = await supabase
+            .from('assessments_library')
+            .insert({
+              category: config.category,
+              name: config.name,
+              popular_equivalent: config.popular_equivalent,
+              scientific_reference: config.scientific_reference,
+              description: config.description,
+              question_count: config.question_count,
+              estimated_time: config.estimated_time,
+              slug: config.slug,
+              scoring_algorithm: config.scoring_algorithm,
+              scoring_type: config.scoring_type,
+              input_type: config.input_type,
+              trait_config: config.trait_config,
+              cronbach_alpha: config.cronbach_alpha,
+              validity_score: config.validity_score,
+              is_active: true,
+            })
+            .select()
+            .single();
+          
+          if (newAssessment) {
+            assessmentId = newAssessment.id;
+            assessmentsUpdated++;
+          } else continue;
+        }
+
+        // Insert questions
+        const questionsToInsert = questions.map(q => ({
+          assessment_id: assessmentId,
+          question_number: q.question_number,
+          text: q.text,
+          trait_key: q.trait_key,
+          facet_key: null,
+          sub_category: null,
+          reverse_coded: q.reverse_coded,
+          correct_option: null,
+          options: null,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('assessment_questions')
+          .insert(questionsToInsert);
+
+        if (!insertError) {
+          totalQuestions += questionsToInsert.length;
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        assessmentsUpdated,
+        totalQuestions,
+        message: `Seeded ${assessmentsUpdated} assessments with ${totalQuestions} total questions`
+      });
     } catch (error) {
       console.error('Seed error:', error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  // Get questions for any assessment by slug
-  app.get("/api/assessments/:slug/questions", (req, res) => {
-    const { slug } = req.params;
-    const assessment = getAssessmentBySlug(slug);
+  // Build static questions lookup from seed data
+  const buildQuestionsLookup = () => {
+    const allSeedData = [
+      IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3,
+      ICAR_16, GRIT_SCALE_8, RIASEC_30, TEIQUE_SF_30,
+    ];
+    const cat4Data = [
+      { config: PSS_10_CONFIG, questions: PSS_10_QUESTIONS },
+      { config: SWLS_CONFIG, questions: SWLS_QUESTIONS },
+      { config: BRS_CONFIG, questions: BRS_QUESTIONS },
+      { config: FS_CONFIG, questions: FS_QUESTIONS },
+    ];
     
-    if (!assessment) {
-      return res.status(404).json({ error: `Assessment '${slug}' not found` });
+    const generateId = (slug: string) => {
+      const hash = slug.split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0);
+      return `${Math.abs(hash).toString(16).padStart(8, '0')}-0000-4000-8000-000000000000`;
+    };
+    
+    const lookup: Record<string, { assessment: Record<string, unknown>; questions: Record<string, unknown>[] }> = {};
+    
+    for (const a of allSeedData) {
+      const id = generateId(a.slug);
+      lookup[id] = {
+        assessment: {
+          id, slug: a.slug, name: a.name, category: a.category, description: a.description,
+          question_count: a.questionCount, estimated_time: a.estimatedTime,
+          scoring_algorithm: a.scoringAlgorithm, scoring_type: a.scoringType,
+          input_type: a.inputType, trait_config: a.traitConfig,
+        },
+        questions: a.questions.map(q => ({
+          questionNumber: q.questionNumber, text: q.text, traitKey: q.traitKey,
+          facetKey: q.facetKey, subCategory: q.subCategory, reverseCoded: q.reverseCoded,
+          correctOption: q.correctOption, options: q.options,
+        })),
+      };
     }
     
-    res.json(assessment);
+    for (const { config, questions: qs } of cat4Data) {
+      const id = generateId(config.slug);
+      lookup[id] = {
+        assessment: {
+          id, slug: config.slug, name: config.name, category: config.category,
+          description: config.description, question_count: config.question_count,
+          estimated_time: config.estimated_time, scoring_algorithm: config.scoring_algorithm,
+          scoring_type: config.scoring_type, input_type: config.input_type,
+          trait_config: config.trait_config,
+        },
+        questions: qs.map(q => ({
+          questionNumber: q.questionNumber, text: q.text, traitKey: q.traitKey,
+          reverseCoded: q.reverseCoded, options: null, correctOption: null,
+        })),
+      };
+    }
+    
+    return lookup;
+  };
+
+  const staticQuestionsLookup = buildQuestionsLookup();
+
+  // Get questions for any assessment by ID (UUID)
+  app.get("/api/assessments/:id/questions", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Try static data first (works without database)
+      if (staticQuestionsLookup[id]) {
+        const { assessment, questions: mappedQuestions } = staticQuestionsLookup[id];
+        const inputType = (assessment.input_type as string) || 'likert_5';
+        let likertScale: { value: number; label: string }[] = [];
+        
+        if (inputType === 'likert_5') {
+          likertScale = [
+            { value: 1, label: 'Very Inaccurate' }, { value: 2, label: 'Moderately Inaccurate' },
+            { value: 3, label: 'Neither Accurate Nor Inaccurate' },
+            { value: 4, label: 'Moderately Accurate' }, { value: 5, label: 'Very Accurate' },
+          ];
+        } else if (inputType === 'likert_7') {
+          likertScale = [
+            { value: 1, label: 'Strongly Disagree' }, { value: 2, label: 'Disagree' },
+            { value: 3, label: 'Slightly Disagree' }, { value: 4, label: 'Neutral' },
+            { value: 5, label: 'Slightly Agree' }, { value: 6, label: 'Agree' },
+            { value: 7, label: 'Strongly Agree' },
+          ];
+        } else if (inputType === 'likert_6') {
+          likertScale = [
+            { value: 1, label: 'Not like me at all' }, { value: 2, label: 'Not like me' },
+            { value: 3, label: 'A little like me' }, { value: 4, label: 'Somewhat like me' },
+            { value: 5, label: 'Like me' }, { value: 6, label: 'Very much like me' },
+          ];
+        } else if (inputType === 'likert_0_4') {
+          likertScale = [
+            { value: 0, label: 'Never' }, { value: 1, label: 'Almost Never' },
+            { value: 2, label: 'Sometimes' }, { value: 3, label: 'Fairly Often' },
+            { value: 4, label: 'Very Often' },
+          ];
+        }
+        
+        return res.json({
+          slug: assessment.slug, name: assessment.name, category: assessment.category,
+          description: assessment.description, questionCount: assessment.question_count,
+          estimatedTime: assessment.estimated_time,
+          scoringAlgorithm: assessment.scoring_algorithm || 'average',
+          scoringType: assessment.scoring_type || 'likert_average',
+          inputType, traitConfig: assessment.trait_config || { traits: [] },
+          questions: mappedQuestions,
+          likertScale: likertScale.length > 0 ? likertScale : undefined,
+        });
+      }
+      
+      // Fallback to database query
+      const { data: assessment, error: assessmentError } = await supabase
+        .from('assessments_library')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (assessmentError || !assessment) {
+        return res.status(404).json({ error: `Assessment not found` });
+      }
+      
+      const { data: questions, error: questionsError } = await supabase
+        .from('assessment_questions')
+        .select('*')
+        .eq('assessment_id', id)
+        .order('question_number', { ascending: true });
+      
+      if (questionsError) {
+        console.error('Questions fetch error:', questionsError);
+        return res.status(500).json({ error: 'Failed to fetch questions' });
+      }
+      
+      const mappedQuestions = (questions || []).map(q => ({
+        questionNumber: q.question_number, text: q.text, traitKey: q.trait_key,
+        facetKey: q.facet_key, subCategory: q.sub_category,
+        reverseCoded: q.reverse_coded || false, correctOption: q.correct_option, options: q.options,
+      }));
+      
+      // Build the likert scale based on input type
+      const inputType = assessment.input_type || 'likert_5';
+      let likertScale: { value: number; label: string }[] = [];
+      
+      if (inputType === 'likert_5') {
+        likertScale = [
+          { value: 1, label: 'Very Inaccurate' },
+          { value: 2, label: 'Moderately Inaccurate' },
+          { value: 3, label: 'Neither Accurate Nor Inaccurate' },
+          { value: 4, label: 'Moderately Accurate' },
+          { value: 5, label: 'Very Accurate' },
+        ];
+      } else if (inputType === 'likert_7') {
+        likertScale = [
+          { value: 1, label: 'Strongly Disagree' },
+          { value: 2, label: 'Disagree' },
+          { value: 3, label: 'Slightly Disagree' },
+          { value: 4, label: 'Neutral' },
+          { value: 5, label: 'Slightly Agree' },
+          { value: 6, label: 'Agree' },
+          { value: 7, label: 'Strongly Agree' },
+        ];
+      } else if (inputType === 'likert_0_4') {
+        likertScale = [
+          { value: 0, label: 'Never' },
+          { value: 1, label: 'Almost Never' },
+          { value: 2, label: 'Sometimes' },
+          { value: 3, label: 'Fairly Often' },
+          { value: 4, label: 'Very Often' },
+        ];
+      }
+      
+      res.json({
+        slug: assessment.slug || assessment.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        name: assessment.name,
+        category: assessment.category,
+        description: assessment.description,
+        questionCount: assessment.question_count,
+        estimatedTime: assessment.estimated_time,
+        scoringAlgorithm: assessment.scoring_algorithm || 'average',
+        scoringType: assessment.scoring_type || 'likert_average',
+        inputType: inputType,
+        traitConfig: assessment.trait_config || { traits: [] },
+        questions: mappedQuestions,
+        likertScale: likertScale.length > 0 ? likertScale : undefined,
+      });
+    } catch (error) {
+      console.error('Assessment questions error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   // Get IPIP-NEO-120 questions (legacy endpoint)
@@ -203,38 +622,76 @@ export async function registerRoutes(
     }
   });
 
-  // Submit any assessment - generic endpoint
-  app.post("/api/assessments/:slug/submit", async (req, res) => {
+  // Submit any assessment - generic endpoint using ID
+  app.post("/api/assessments/:id/submit", async (req, res) => {
     try {
-      const { slug } = req.params;
+      const { id } = req.params;
       const { userId, responses } = req.body;
 
       if (!userId) {
         return res.status(400).json({ error: "userId is required" });
       }
 
-      const assessment = getAssessmentBySlug(slug);
-      if (!assessment) {
-        return res.status(404).json({ error: `Assessment '${slug}' not found` });
+      // Try static data first
+      let assessment: Record<string, unknown> | null = null;
+      let questionData: Record<string, unknown>[] = [];
+      let inputType = 'likert_5';
+      let slug = '';
+
+      if (staticQuestionsLookup[id]) {
+        const staticData = staticQuestionsLookup[id];
+        assessment = staticData.assessment;
+        questionData = staticData.questions.map(q => ({
+          ...q,
+          inputType: assessment?.input_type || 'likert_5',
+        }));
+        inputType = (assessment.input_type as string) || 'likert_5';
+        slug = (assessment.slug as string) || '';
+      } else {
+        // Fallback to database
+        const { data: dbAssessment, error: assessmentError } = await supabase
+          .from('assessments_library')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (assessmentError || !dbAssessment) {
+          return res.status(404).json({ error: `Assessment not found` });
+        }
+        assessment = dbAssessment;
+
+        const { data: dbQuestions, error: questionsError } = await supabase
+          .from('assessment_questions')
+          .select('*')
+          .eq('assessment_id', id)
+          .order('question_number', { ascending: true });
+        
+        if (questionsError) {
+          console.error('Questions fetch error:', questionsError);
+          return res.status(500).json({ error: 'Failed to fetch questions' });
+        }
+
+        inputType = dbAssessment.input_type || 'likert_5';
+        slug = dbAssessment.slug || dbAssessment.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+        questionData = (dbQuestions || []).map(q => ({
+          questionNumber: q.question_number,
+          text: q.text,
+          traitKey: q.trait_key,
+          facetKey: q.facet_key,
+          reverseCoded: q.reverse_coded || false,
+          correctOption: q.correct_option,
+          options: q.options,
+          inputType: inputType,
+        }));
       }
 
-      const questionData = assessment.questions.map(q => ({
-        questionNumber: q.questionNumber,
-        text: q.text,
-        traitKey: q.traitKey,
-        facetKey: q.facetKey,
-        reverseCoded: q.reverseCoded,
-        correctOption: q.correctOption,
-        options: q.options,
-        inputType: assessment.inputType,
-      }));
-
       const config = {
-        slug: assessment.slug,
-        scoringAlgorithm: assessment.scoringAlgorithm,
-        scoringType: assessment.scoringType,
-        inputType: assessment.inputType,
-        traitConfig: assessment.traitConfig,
+        slug: slug,
+        scoringAlgorithm: assessment.scoring_algorithm || 'average',
+        scoringType: assessment.scoring_type || 'likert_average',
+        inputType: inputType,
+        traitConfig: assessment.trait_config || { traits: [] },
         questions: questionData,
       };
 
@@ -273,7 +730,7 @@ export async function registerRoutes(
           ...result,
           assessmentName: assessment.name,
           category: assessment.category,
-          traitConfig: assessment.traitConfig,
+          traitConfig: assessment.trait_config || { traits: [] },
         }
       });
     } catch (error) {

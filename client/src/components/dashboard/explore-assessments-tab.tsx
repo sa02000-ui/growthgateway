@@ -104,20 +104,6 @@ const categoryConfig: Record<string, { name: string; subtitle: string; icon: typ
 
 const categoryOrder = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'];
 
-const slugMapping: Record<string, string> = {
-  'IPIP-NEO-120': 'ipip-neo-120',
-  'Schwartz Portrait Values (PVQ)': 'pvq-21',
-  'Short Dark Triad (SD3)': 'sd3-27',
-  'ICAR-16 Cognitive Ability': 'icar-16',
-  'Short Grit Scale (Grit-S)': 'grit-s-8',
-  'O*NET Interest Profiler': 'onet-riasec-30',
-  'TEIQue-SF': 'teique-sf-30',
-  'Perceived Stress Scale (PSS-10)': 'pss-10',
-  'Satisfaction With Life Scale': 'swls-5',
-  'Brief Resilience Scale': 'brs-6',
-  'Flourishing Scale': 'flourishing-8',
-};
-
 type ViewState = 'library' | 'taking' | 'results' | 'history';
 
 export default function ExploreAssessmentsTab() {
@@ -130,6 +116,7 @@ export default function ExploreAssessmentsTab() {
   const [showProfileConfirm, setShowProfileConfirm] = useState(false);
   const [profileNoChange, setProfileNoChange] = useState(false);
   const [selectedAssessmentName, setSelectedAssessmentName] = useState<string | null>(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
   const [currentAssessment, setCurrentAssessment] = useState<AssessmentData | null>(null);
   const [loadingAssessment, setLoadingAssessment] = useState(false);
 
@@ -146,10 +133,6 @@ export default function ExploreAssessmentsTab() {
 
   const libraryAssessments = libraryData?.assessments || [];
   const results = resultsData?.results || [];
-
-  const getSlugFromName = (name: string): string => {
-    return slugMapping[name] || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  };
 
   const getLastTaken = (assessmentName: string) => {
     const assessmentResults = results.filter(r => 
@@ -177,8 +160,8 @@ export default function ExploreAssessmentsTab() {
   })).filter(group => group.assessments.length > 0);
 
   const submitMutation = useMutation({
-    mutationFn: async (data: { slug: string; userId: string; responses: Record<string, number | string> }) => {
-      const res = await apiRequest('POST', `/api/assessments/${data.slug}/submit`, {
+    mutationFn: async (data: { assessmentId: string; userId: string; responses: Record<string, number | string> }) => {
+      const res = await apiRequest('POST', `/api/assessments/${data.assessmentId}/submit`, {
         userId: data.userId,
         responses: data.responses,
       });
@@ -198,7 +181,8 @@ export default function ExploreAssessmentsTab() {
     },
   });
 
-  const handleStartClick = async (assessmentName: string) => {
+  const handleStartClick = async (assessmentId: string, assessmentName: string) => {
+    setSelectedAssessmentId(assessmentId);
     setSelectedAssessmentName(assessmentName);
     setShowProfileConfirm(true);
   };
@@ -209,15 +193,14 @@ export default function ExploreAssessmentsTab() {
   };
 
   const confirmAndStart = async () => {
-    if (!selectedAssessmentName) return;
+    if (!selectedAssessmentId) return;
     
     setShowProfileConfirm(false);
     setProfileNoChange(false);
     setLoadingAssessment(true);
     
     try {
-      const slug = getSlugFromName(selectedAssessmentName);
-      const response = await fetch(`/api/assessments/${slug}/questions`);
+      const response = await fetch(`/api/assessments/${selectedAssessmentId}/questions`);
       
       if (!response.ok) {
         throw new Error(`Failed to load assessment: ${response.statusText}`);
@@ -266,9 +249,9 @@ export default function ExploreAssessmentsTab() {
   };
 
   const handleSubmit = () => {
-    if (user?.id && currentAssessment) {
+    if (user?.id && currentAssessment && selectedAssessmentId) {
       submitMutation.mutate({ 
-        slug: currentAssessment.slug, 
+        assessmentId: selectedAssessmentId, 
         userId: user.id, 
         responses 
       });
@@ -680,18 +663,22 @@ export default function ExploreAssessmentsTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {result.scores && typeof result.scores === 'object' && (
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(result.scores as Record<string, number>).slice(0, 5).map(([key, value]) => (
-                        <div key={key} className="p-2 bg-muted/50 rounded-md">
-                          <div className="text-xs text-muted-foreground">{key}</div>
-                          <div className="text-sm font-semibold text-foreground">
-                            {typeof value === 'number' ? `${Math.round(value)}%` : String(value)}
+                  {result.scores && typeof result.scores === 'object' && (() => {
+                    const scoresObj = result.scores as Record<string, number>;
+                    const scoreEntries = Object.entries(scoresObj).slice(0, 5);
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {scoreEntries.map(([key, value]) => (
+                          <div key={key} className="p-2 bg-muted/50 rounded-md">
+                            <div className="text-xs text-muted-foreground">{key}</div>
+                            <div className="text-sm font-semibold text-foreground">
+                              {typeof value === 'number' ? `${Math.round(value)}%` : String(value)}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}
@@ -764,7 +751,6 @@ export default function ExploreAssessmentsTab() {
                 {group.assessments.map((assessment) => {
                   const lastTaken = getLastTaken(assessment.name);
                   const historyCount = getHistoryCount(assessment.name);
-                  const hasSlug = !!slugMapping[assessment.name];
 
                   return (
                     <Card 
@@ -830,40 +816,24 @@ export default function ExploreAssessmentsTab() {
                         )}
 
                         <div className="pt-2 flex gap-2">
-                          {hasSlug ? (
-                            <>
-                              <Button 
-                                onClick={() => handleStartClick(assessment.name)} 
-                                className="flex-1 gap-2" 
-                                data-testid={`button-start-${assessment.id}`}
-                              >
-                                <Play className="w-4 h-4" />
-                                {lastTaken ? 'Retake Assessment' : 'Start Assessment'}
-                              </Button>
-                              {historyCount > 0 && (
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => setState('history')}
-                                  className="gap-2"
-                                  data-testid={`button-history-${assessment.id}`}
-                                >
-                                  <History className="w-4 h-4" />
-                                  History ({historyCount})
-                                </Button>
-                              )}
-                            </>
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="outline" className="w-full gap-2" disabled>
-                                  <Info className="w-4 h-4" />
-                                  Coming Soon
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>This assessment will be available soon</p>
-                              </TooltipContent>
-                            </Tooltip>
+                          <Button 
+                            onClick={() => handleStartClick(assessment.id, assessment.name)} 
+                            className="flex-1 gap-2" 
+                            data-testid={`button-start-${assessment.id}`}
+                          >
+                            <Play className="w-4 h-4" />
+                            {lastTaken ? 'Retake Assessment' : 'Start Assessment'}
+                          </Button>
+                          {historyCount > 0 && (
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setState('history')}
+                              className="gap-2"
+                              data-testid={`button-history-${assessment.id}`}
+                            >
+                              <History className="w-4 h-4" />
+                              History ({historyCount})
+                            </Button>
                           )}
                         </div>
                       </CardContent>
