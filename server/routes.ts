@@ -10,6 +10,8 @@ import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
+import { getAssessmentBySlug } from "./assessment-loader";
+import { calculateAssessmentScore } from "@shared/scoring-engine";
 
 const ASSESSMENTS_SEED_DATA = [
   { category: "Who Am I", name: "IPIP-NEO-120", popular_equivalent: "Similar to MBTI / 16 Personalities", scientific_reference: "Goldberg (1999)", description: "The scientific gold standard for personality profiling. Measures the Big Five traits: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.", question_count: 120, estimated_time: "15-20 mins" },
@@ -114,7 +116,19 @@ export async function registerRoutes(
     }
   });
 
-  // Get IPIP-NEO-120 questions
+  // Get questions for any assessment by slug
+  app.get("/api/assessments/:slug/questions", (req, res) => {
+    const { slug } = req.params;
+    const assessment = getAssessmentBySlug(slug);
+    
+    if (!assessment) {
+      return res.status(404).json({ error: `Assessment '${slug}' not found` });
+    }
+    
+    res.json(assessment);
+  });
+
+  // Get IPIP-NEO-120 questions (legacy endpoint)
   app.get("/api/assessment/questions", (_req, res) => {
     res.json({ questions });
   });
@@ -182,6 +196,85 @@ export async function registerRoutes(
         success: true, 
         resultId: data.id,
         scores 
+      });
+    } catch (error) {
+      console.error('Assessment submission error:', error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Submit any assessment - generic endpoint
+  app.post("/api/assessments/:slug/submit", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { userId, responses } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+      }
+
+      const assessment = getAssessmentBySlug(slug);
+      if (!assessment) {
+        return res.status(404).json({ error: `Assessment '${slug}' not found` });
+      }
+
+      const questionData = assessment.questions.map(q => ({
+        questionNumber: q.questionNumber,
+        text: q.text,
+        traitKey: q.traitKey,
+        facetKey: q.facetKey,
+        reverseCoded: q.reverseCoded,
+        correctOption: q.correctOption,
+        options: q.options,
+        inputType: assessment.inputType,
+      }));
+
+      const config = {
+        slug: assessment.slug,
+        scoringAlgorithm: assessment.scoringAlgorithm,
+        scoringType: assessment.scoringType,
+        inputType: assessment.inputType,
+        traitConfig: assessment.traitConfig,
+        questions: questionData,
+      };
+
+      const result = calculateAssessmentScore(config, responses);
+
+      const scoresObject = result.traitScores.reduce((acc, ts) => {
+        acc[ts.key] = ts.score;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const { data, error } = await supabase
+        .from('results_log')
+        .insert({
+          user_id: userId,
+          assessment_type: assessment.name,
+          assessment_slug: slug,
+          responses: responses,
+          scores: scoresObject,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        return res.status(500).json({ 
+          error: "Failed to save assessment results",
+          code: error.code,
+          message: error.message
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        resultId: data.id,
+        result: {
+          ...result,
+          assessmentName: assessment.name,
+          category: assessment.category,
+          traitConfig: assessment.traitConfig,
+        }
       });
     } catch (error) {
       console.error('Assessment submission error:', error);
