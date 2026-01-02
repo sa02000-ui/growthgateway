@@ -406,8 +406,8 @@ export async function registerRoutes(
           trait_config: config.trait_config,
         },
         questions: qs.map(q => ({
-          questionNumber: q.questionNumber, text: q.text, traitKey: q.traitKey,
-          reverseCoded: q.reverseCoded, options: null, correctOption: null,
+          questionNumber: q.question_number, text: q.text, traitKey: q.trait_key,
+          reverseCoded: q.reverse_coded, options: null, correctOption: null,
         })),
       };
     }
@@ -686,12 +686,16 @@ export async function registerRoutes(
         }));
       }
 
+      if (!assessment) {
+        return res.status(404).json({ error: 'Assessment not found' });
+      }
+
       const config = {
         slug: slug,
-        scoringAlgorithm: assessment.scoring_algorithm || 'average',
-        scoringType: assessment.scoring_type || 'likert_average',
+        scoringAlgorithm: (assessment.scoring_algorithm as "average" | "summation" | "complex_centering" | "binary_correct" | "multi_category") || 'average',
+        scoringType: (assessment.scoring_type as string) || 'likert_average',
         inputType: inputType,
-        traitConfig: assessment.trait_config || { traits: [] },
+        traitConfig: (assessment.trait_config as { traits: { key: string; name: string }[] }) || { traits: [] },
         questions: questionData,
       };
 
@@ -702,11 +706,14 @@ export async function registerRoutes(
         return acc;
       }, {} as Record<string, number>);
 
+      const assessmentName = assessment.name as string;
+      const assessmentCategory = assessment.category as string;
+
       const { data, error } = await supabase
         .from('results_log')
         .insert({
           user_id: userId,
-          assessment_type: assessment.name,
+          assessment_type: assessmentName,
           assessment_slug: slug,
           responses: responses,
           scores: scoresObject,
@@ -728,9 +735,9 @@ export async function registerRoutes(
         resultId: data.id,
         result: {
           ...result,
-          assessmentName: assessment.name,
-          category: assessment.category,
-          traitConfig: assessment.trait_config || { traits: [] },
+          assessmentName: assessmentName,
+          category: assessmentCategory,
+          traitConfig: config.traitConfig,
         }
       });
     } catch (error) {
