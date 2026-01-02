@@ -7,7 +7,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { User, Briefcase, GraduationCap, Globe, Calendar, Save, Loader2, Mail, Phone, Lock, Settings, Info } from 'lucide-react';
+import { User, Briefcase, GraduationCap, Globe, Calendar, Save, Loader2, Mail, Phone, Lock, Settings, Info, AlertTriangle, Trash2 } from 'lucide-react';
+import { useLocation } from 'wouter';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -68,8 +80,9 @@ interface AccountData {
 }
 
 export default function ProfileTab() {
-  const { user, supabase } = useAuth();
+  const { user, supabase, session, signOut } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [saving, setSaving] = useState(false);
   const [savingAccount, setSavingAccount] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -77,6 +90,52 @@ export default function ProfileTab() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!session?.access_token) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to delete your account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      const response = await fetch('/api/user/me', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      toast({
+        title: "Account Deleted",
+        description: "Your account and all associated data have been permanently deleted.",
+      });
+
+      await signOut();
+      setLocation('/');
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      toast({
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
 
   const [account, setAccount] = useState<AccountData>({
     displayName: '',
@@ -946,6 +1005,75 @@ export default function ProfileTab() {
                 rows={3}
                 data-testid="textarea-other-event"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription>
+              Irreversible actions that affect your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border border-destructive/30 rounded-md bg-background">
+              <div className="space-y-1">
+                <h4 className="font-medium text-foreground">Delete Account</h4>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    className="gap-2 shrink-0"
+                    disabled={deletingAccount}
+                    data-testid="button-delete-account"
+                  >
+                    {deletingAccount ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    Delete Account
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-destructive" />
+                      Are you absolutely sure?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <span className="block">
+                        This action <strong>cannot be undone</strong>. This will permanently delete your account and remove all your data from our servers, including:
+                      </span>
+                      <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                        <li>All assessment results and history</li>
+                        <li>Peer feedback received</li>
+                        <li>Profile information</li>
+                        <li>Group memberships</li>
+                      </ul>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deletingAccount}
+                      data-testid="button-confirm-delete"
+                    >
+                      {deletingAccount ? 'Deleting...' : 'Yes, delete my account'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

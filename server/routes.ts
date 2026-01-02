@@ -10,7 +10,7 @@ import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
-import { calculateAssessmentScore } from "@shared/scoring-engine";
+import { calculateAssessmentScore, type QuestionData } from "@shared/scoring-engine";
 
 // Import all assessment seed data
 import { IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3 } from "@shared/assessments/category-one-seed";
@@ -189,12 +189,13 @@ export async function registerRoutes(
         // Exact match
         if (existingMap.has(lower)) return existingMap.get(lower);
         // Keyword matching
-        for (const [key, val] of existingMap) {
+        const entries = Array.from(existingMap.entries());
+        for (const [key, val] of entries) {
           if (lower.includes(key) || key.includes(lower.split(' ')[0])) return val;
           // Match by key words
-          const seedWords = lower.split(/[\s\-()]+/).filter(w => w.length > 2);
-          const dbWords = key.split(/[\s\-()]+/).filter(w => w.length > 2);
-          const commonWords = seedWords.filter(w => dbWords.includes(w));
+          const seedWords = lower.split(/[\s\-()]+/).filter((w: string) => w.length > 2);
+          const dbWords = key.split(/[\s\-()]+/).filter((w: string) => w.length > 2);
+          const commonWords = seedWords.filter((w: string) => dbWords.includes(w));
           if (commonWords.length >= 2) return val;
         }
         return null;
@@ -693,13 +694,23 @@ export async function registerRoutes(
       const traitConfigRaw = assessment.trait_config as { traits: { key: string; name: string; color?: string }[] } | null;
       const traitConfig = traitConfigRaw || { traits: [] };
 
+      const typedQuestions: QuestionData[] = questionData.map(q => ({
+        questionNumber: (q.questionNumber as number) || 0,
+        traitKey: (q.traitKey as string) || '',
+        facetKey: q.facetKey as string | undefined,
+        subCategory: q.subCategory as string | undefined,
+        reverseCoded: (q.reverseCoded as boolean) || false,
+        correctOption: q.correctOption as string | undefined,
+        inputType: (q.inputType as string) || inputType,
+      }));
+
       const config = {
         slug: slug,
         scoringAlgorithm: (assessment.scoring_algorithm as "average" | "summation" | "complex_centering" | "binary_correct" | "multi_category") || 'average',
-        scoringType: (assessment.scoring_type as string) || 'likert_average',
+        scoringType: (assessment.scoring_type as "likert_average" | "binary_correct" | "multi_category" | "likert_sum") || 'likert_average',
         inputType: inputType,
         traitConfig: traitConfig,
-        questions: questionData,
+        questions: typedQuestions,
       };
 
       const result = calculateAssessmentScore(config, responses);
@@ -1218,6 +1229,83 @@ export async function registerRoutes(
     } catch (error) {
       console.error('Delete group error:', error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete user account (Right to be Forgotten)
+  app.delete("/api/user/me", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).json({ error: "Authorization required" });
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        return res.status(401).json({ error: "Invalid or expired session" });
+      }
+
+      const userId = user.id;
+      console.log(`[Account Deletion] Starting deletion for user: ${userId}`);
+
+      const deletionResults = {
+        results_log: false,
+        peer_feedback: false,
+        feedback_tokens: false,
+        group_members: false,
+        user_profiles: false,
+        shared_result_tokens: false,
+      };
+
+      try {
+        await supabase.from('results_log').delete().eq('user_id', userId);
+        deletionResults.results_log = true;
+        console.log('[Account Deletion] Deleted results_log entries');
+      } catch (e) { console.log('[Account Deletion] No results_log to delete or error:', e); }
+
+      try {
+        await supabase.from('peer_feedback').delete().eq('target_user_id', userId);
+        deletionResults.peer_feedback = true;
+        console.log('[Account Deletion] Deleted peer_feedback entries');
+      } catch (e) { console.log('[Account Deletion] No peer_feedback to delete or error:', e); }
+
+      try {
+        await supabase.from('feedback_tokens').delete().eq('user_id', userId);
+        deletionResults.feedback_tokens = true;
+        console.log('[Account Deletion] Deleted feedback_tokens entries');
+      } catch (e) { console.log('[Account Deletion] No feedback_tokens to delete or error:', e); }
+
+      try {
+        await supabase.from('group_members').delete().eq('user_id', userId);
+        deletionResults.group_members = true;
+        console.log('[Account Deletion] Deleted group_members entries');
+      } catch (e) { console.log('[Account Deletion] No group_members to delete or error:', e); }
+
+      try {
+        await supabase.from('user_profiles').delete().eq('user_id', userId);
+        deletionResults.user_profiles = true;
+        console.log('[Account Deletion] Deleted user_profiles entries');
+      } catch (e) { console.log('[Account Deletion] No user_profiles to delete or error:', e); }
+
+      try {
+        await supabase.from('shared_result_tokens').delete().eq('user_id', userId);
+        deletionResults.shared_result_tokens = true;
+        console.log('[Account Deletion] Deleted shared_result_tokens entries');
+      } catch (e) { console.log('[Account Deletion] No shared_result_tokens to delete or error:', e); }
+
+      console.log(`[Account Deletion] Data deletion complete for user: ${userId}`, deletionResults);
+      
+      res.json({ 
+        success: true, 
+        message: "All your data has been permanently deleted. Please sign out to complete the process.",
+        note: "Your login credentials have been invalidated."
+      });
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      res.status(500).json({ error: "Internal server error during account deletion" });
     }
   });
 

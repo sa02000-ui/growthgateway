@@ -109,6 +109,7 @@ npm run dev
 - `POST /api/send-invite` - Send feedback invitation email (mock in dev)
 - `POST /api/share-result` - Generate shareable link token for assessment results
 - `GET /api/shared-result/:token` - Retrieve shared assessment results (public)
+- `DELETE /api/user/me` - Delete user account and all associated data (authenticated)
 
 ## Database Tables
 - `assessments_library` - Stores assessment metadata (category, name, slug, scoring_algorithm, scoring_type, input_type, trait_config, question_count, estimated_time, is_active)
@@ -123,6 +124,11 @@ npm run dev
 - **multi_category**: Scores across multiple independent categories (RIASEC, TEIQue-SF)
 
 ## Recent Changes
+- 2025-01-02: Phase 14 Identity & Privacy Layer complete
+  - Added Forgot Password flow (/forgot-password page with Supabase resetPasswordForEmail)
+  - Added Delete Account feature in Profile (Danger Zone with confirmation dialog)
+  - DELETE /api/user/me endpoint removes all user data from database tables
+  - Mobile-responsive login/signup forms
 - 2024-12-22: Completed Phase 11 Category 4 well-being assessments (PSS-10, SWLS-5, BRS-6, Flourishing-8) with reverse coding
 - 2024-12-22: Added 3 new visualizations: StressGauge (PSS-10), Scorecard (SWLS/FS), Battery indicator (BRS)
 - 2024-12-22: Enhanced scoring engine with likert_0_4 scale support for 0-4 Likert responses
