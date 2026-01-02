@@ -690,12 +690,15 @@ export async function registerRoutes(
         return res.status(404).json({ error: 'Assessment not found' });
       }
 
+      const traitConfigRaw = assessment.trait_config as { traits: { key: string; name: string; color?: string }[] } | null;
+      const traitConfig = traitConfigRaw || { traits: [] };
+
       const config = {
         slug: slug,
         scoringAlgorithm: (assessment.scoring_algorithm as "average" | "summation" | "complex_centering" | "binary_correct" | "multi_category") || 'average',
         scoringType: (assessment.scoring_type as string) || 'likert_average',
         inputType: inputType,
-        traitConfig: (assessment.trait_config as { traits: { key: string; name: string }[] }) || { traits: [] },
+        traitConfig: traitConfig,
         questions: questionData,
       };
 

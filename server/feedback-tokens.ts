@@ -55,28 +55,36 @@ export function registerFeedbackTokenRoutes(app: Express): void {
   app.get("/api/feedback-token/:token", async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
-      const normalizedToken = token.trim().toLowerCase();
+      const cleanToken = token.trim();
+      const normalizedToken = cleanToken.toLowerCase();
+      const noHyphens = normalizedToken.replace(/-/g, '');
       
       console.log(`[Token Lookup] Searching for token: "${normalizedToken}"`);
 
-      const { data, error } = await supabase
+      const { data: allTokens } = await supabase
         .from('feedback_tokens')
-        .select('user_id, token')
-        .ilike('token', normalizedToken)
-        .single();
+        .select('user_id, token');
 
-      if (error) {
-        console.log(`[Token Lookup] Database error:`, error.message);
+      if (!allTokens || allTokens.length === 0) {
+        console.log(`[Token Lookup] No tokens in database`);
         return res.status(404).json({ error: "Invalid token" });
       }
-      
-      if (!data) {
+
+      const match = allTokens.find(t => {
+        const dbToken = (t.token || '').toLowerCase();
+        const dbNoHyphens = dbToken.replace(/-/g, '');
+        return dbToken === normalizedToken || 
+               dbNoHyphens === noHyphens || 
+               dbToken === cleanToken.toLowerCase();
+      });
+
+      if (!match) {
         console.log(`[Token Lookup] No matching token found`);
         return res.status(404).json({ error: "Invalid token" });
       }
 
-      console.log(`[Token Lookup] Found user_id: ${data.user_id}`);
-      res.json({ userId: data.user_id });
+      console.log(`[Token Lookup] Found user_id: ${match.user_id}`);
+      res.json({ userId: match.user_id });
     } catch (error) {
       console.error("Token lookup error:", error);
       res.status(404).json({ error: "Invalid token" });
