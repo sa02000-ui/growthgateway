@@ -147,15 +147,23 @@ export async function registerRoutes(
   // Seed assessments library and questions (comprehensive seed)
   app.post("/api/assessments-library/seed", async (_req, res) => {
     try {
+      console.log('[Seed] Starting comprehensive database seed...');
+      
       // Check if questions already seeded
-      const { data: existingQuestions } = await supabase
+      const { data: existingQuestions, error: checkError } = await supabase
         .from('assessment_questions')
         .select('id')
         .limit(1);
 
+      if (checkError) {
+        console.log('[Seed] Questions table check error (may not exist yet):', checkError.message);
+      }
+
       if (existingQuestions && existingQuestions.length > 0) {
         return res.json({ message: "Already seeded with questions", count: existingQuestions.length });
       }
+      
+      console.log('[Seed] No existing questions found, proceeding with seed...');
 
       // Build comprehensive seed data with all metadata
       const allAssessments = [
@@ -210,7 +218,7 @@ export async function registerRoutes(
 
         if (existing) {
           assessmentId = existing.id;
-          // Update with full metadata
+          console.log(`[Seed] Updating existing assessment: ${assessment.name}`);
           await supabase
             .from('assessments_library')
             .update({
@@ -219,18 +227,17 @@ export async function registerRoutes(
               scoring_type: assessment.scoringType,
               input_type: assessment.inputType,
               trait_config: assessment.traitConfig,
+              is_active: true,
             })
             .eq('id', assessmentId);
           assessmentsUpdated++;
         } else {
-          // Insert new assessment
-          const { data: newAssessment } = await supabase
+          console.log(`[Seed] Inserting new assessment: ${assessment.name}`);
+          const { data: newAssessment, error: insertErr } = await supabase
             .from('assessments_library')
             .insert({
               category: assessment.category,
               name: assessment.name,
-              popular_equivalent: assessment.popularEquivalent,
-              scientific_reference: assessment.scientificReference,
               description: assessment.description,
               question_count: assessment.questionCount,
               estimated_time: assessment.estimatedTime,
@@ -244,9 +251,15 @@ export async function registerRoutes(
             .select()
             .single();
           
+          if (insertErr) {
+            console.error(`[Seed] Insert error for ${assessment.name}:`, insertErr.message);
+            continue;
+          }
+          
           if (newAssessment) {
             assessmentId = newAssessment.id;
             assessmentsUpdated++;
+            console.log(`[Seed] Inserted ${assessment.name} with ID: ${assessmentId}`);
           } else continue;
         }
 
@@ -281,7 +294,7 @@ export async function registerRoutes(
 
         if (existing) {
           assessmentId = existing.id;
-          // Update with full metadata
+          console.log(`[Seed] Updating existing Cat4 assessment: ${config.name}`);
           await supabase
             .from('assessments_library')
             .update({
@@ -290,20 +303,17 @@ export async function registerRoutes(
               scoring_type: config.scoring_type,
               input_type: config.input_type,
               trait_config: config.trait_config,
-              cronbach_alpha: config.cronbach_alpha,
-              validity_score: config.validity_score,
+              is_active: true,
             })
             .eq('id', assessmentId);
           assessmentsUpdated++;
         } else {
-          // Insert new assessment
-          const { data: newAssessment } = await supabase
+          console.log(`[Seed] Inserting new Cat4 assessment: ${config.name}`);
+          const { data: newAssessment, error: cat4Err } = await supabase
             .from('assessments_library')
             .insert({
               category: config.category,
               name: config.name,
-              popular_equivalent: config.popular_equivalent,
-              scientific_reference: config.scientific_reference,
               description: config.description,
               question_count: config.question_count,
               estimated_time: config.estimated_time,
@@ -312,12 +322,15 @@ export async function registerRoutes(
               scoring_type: config.scoring_type,
               input_type: config.input_type,
               trait_config: config.trait_config,
-              cronbach_alpha: config.cronbach_alpha,
-              validity_score: config.validity_score,
               is_active: true,
             })
             .select()
             .single();
+          
+          if (cat4Err) {
+            console.error(`[Seed] Cat4 insert error for ${config.name}:`, cat4Err.message);
+            continue;
+          }
           
           if (newAssessment) {
             assessmentId = newAssessment.id;
