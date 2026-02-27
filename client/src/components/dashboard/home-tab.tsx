@@ -105,6 +105,7 @@ function calculateComparison(baseline: AssessmentResult, latest: AssessmentResul
 
 export default function HomeTab() {
   const { user, supabase } = useAuth();
+  const isAdmin = user?.user_metadata?.is_admin === true;
   const [copied, setCopied] = useState(false);
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -307,17 +308,19 @@ export default function HomeTab() {
               Your journey to self-discovery starts here
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={injectTestData}
-            disabled={injecting}
-            className="gap-2 text-xs"
-            data-testid="button-debug-inject-empty"
-          >
-            <Bug className="w-3 h-3" />
-            {injecting ? 'Injecting...' : 'Debug: Inject Test Data'}
-          </Button>
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={injectTestData}
+              disabled={injecting}
+              className="gap-2 text-xs"
+              data-testid="button-debug-inject-empty"
+            >
+              <Bug className="w-3 h-3" />
+              {injecting ? 'Injecting...' : 'Debug: Inject Test Data'}
+            </Button>
+          )}
         </div>
 
         <Card className="bg-card border-border">
@@ -424,17 +427,19 @@ export default function HomeTab() {
             Track your Big Five personality traits over time
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={injectTestData}
-          disabled={injecting}
-          className="gap-2 text-xs"
-          data-testid="button-debug-inject"
-        >
-          <Bug className="w-3 h-3" />
-          {injecting ? 'Injecting...' : 'Debug: Inject Test Data'}
-        </Button>
+        {isAdmin && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={injectTestData}
+            disabled={injecting}
+            className="gap-2 text-xs"
+            data-testid="button-debug-inject"
+          >
+            <Bug className="w-3 h-3" />
+            {injecting ? 'Injecting...' : 'Debug: Inject Test Data'}
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
