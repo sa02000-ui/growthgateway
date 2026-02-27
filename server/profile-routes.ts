@@ -31,9 +31,15 @@ export function registerProfileRoutes(app: Express) {
         [userId]
       );
 
+      const historyResult = await pool.query(
+        "SELECT * FROM profile_history WHERE user_id = $1 ORDER BY id DESC",
+        [userId]
+      );
+
       res.json({
         profile: profileResult.rows[0] || null,
         lifeEvents: eventsResult.rows,
+        history: historyResult.rows,
       });
     } catch (error) {
       console.error("Profile fetch error:", error);

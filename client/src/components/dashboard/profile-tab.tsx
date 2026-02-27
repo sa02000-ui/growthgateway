@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { User, Briefcase, GraduationCap, Globe, Calendar, Save, Loader2, Mail, Phone, Lock, Settings, Info, AlertTriangle, Trash2 } from 'lucide-react';
+import { User, Briefcase, GraduationCap, Globe, Calendar, Save, Loader2, Mail, Phone, Lock, Settings, Info, AlertTriangle, Trash2, History, Clock } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
   AlertDialog,
@@ -165,6 +165,7 @@ export default function ProfileTab() {
     otherEvent: '',
   });
 
+  const [profileHistory, setProfileHistory] = useState<any[]>([]);
   const [professionSearch, setProfessionSearch] = useState('');
 
   useEffect(() => {
@@ -188,7 +189,8 @@ export default function ProfileTab() {
       try {
         const response = await fetch(`/api/profile/${user.id}`);
         if (response.ok) {
-          const { profile: data, lifeEvents: eventsData } = await response.json();
+          const { profile: data, lifeEvents: eventsData, history: historyData } = await response.json();
+          if (historyData) setProfileHistory(historyData);
 
           if (data) {
             setProfile({
@@ -954,6 +956,98 @@ export default function ProfileTab() {
             </div>
           </CardContent>
         </Card>
+
+        {profileHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5 text-primary" />
+                Profile Snapshot History
+              </CardTitle>
+              <CardDescription>
+                A read-only timeline of your profile as it was saved at each point in time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border-l-2 border-primary/20 ml-4 pl-4 space-y-6">
+                {profileHistory.map((entry, index) => {
+                  const snapshot = typeof entry.snapshot === 'string' ? JSON.parse(entry.snapshot) : entry.snapshot;
+                  const savedDate = snapshot?.timestamp
+                    ? new Date(snapshot.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : 'Unknown date';
+                  const savedTime = snapshot?.timestamp
+                    ? new Date(snapshot.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  const snapshotProfile = snapshot?.profile || {};
+                  const snapshotEvents: LifeEventEntry[] = snapshot?.lifeEvents || [];
+
+                  const profileSummaryItems: string[] = [];
+                  if (snapshotProfile.maritalStatus) profileSummaryItems.push(snapshotProfile.maritalStatus);
+                  if (snapshotProfile.profession) profileSummaryItems.push(snapshotProfile.profession);
+                  if (snapshotProfile.educationLevel) profileSummaryItems.push(snapshotProfile.educationLevel);
+                  if (snapshotProfile.birthCountry) profileSummaryItems.push(snapshotProfile.birthCountry);
+
+                  return (
+                    <div key={entry.id || index} className="relative" data-testid={`timeline-entry-${index}`}>
+                      <div className="absolute -left-[1.35rem] top-1 w-2.5 h-2.5 rounded-full bg-primary/40 border-2 border-background" />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground" data-testid={`text-snapshot-date-${index}`}>
+                            {savedDate}
+                          </span>
+                          {savedTime && (
+                            <span className="text-xs text-muted-foreground">at {savedTime}</span>
+                          )}
+                          {index === 0 && (
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Latest</span>
+                          )}
+                        </div>
+
+                        {profileSummaryItems.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {profileSummaryItems.map((item, i) => (
+                              <span key={i} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {snapshotEvents.length > 0 && (
+                          <div className="space-y-1 pt-1">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              Life Events ({snapshotEvents.length})
+                            </p>
+                            <div className="space-y-1">
+                              {snapshotEvents.map((ev, ei) => {
+                                const eventLabel = lifeEventOptions.find(o => o.value === ev.type)?.label || ev.type;
+                                return (
+                                  <div key={ei} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Calendar className="w-3 h-3 shrink-0" />
+                                    <span>{eventLabel}</span>
+                                    {ev.year && <span className="text-xs">({ev.year})</span>}
+                                    {ev.significance && (
+                                      <span className="text-xs text-primary/70">Impact: {ev.significance}/10</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {profileSummaryItems.length === 0 && snapshotEvents.length === 0 && (
+                          <p className="text-sm text-muted-foreground italic">No profile details in this snapshot</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-destructive/50 bg-destructive/5">
           <CardHeader>
