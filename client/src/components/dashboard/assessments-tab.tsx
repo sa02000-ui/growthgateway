@@ -30,6 +30,17 @@ const questions = questionsData.questions as Question[];
 const likertScale = questionsData.likertScale;
 const traitNames = questionsData.traitNames as Record<TraitKey, string>;
 
+const traitKeyLabels: Record<string, string> = {
+  GRIT: 'Grit', PE: 'Perseverance', CI: 'Consistency',
+  R: 'Realistic', I: 'Investigative', A: 'Artistic', S: 'Social', E: 'Enterprising', C: 'Conventional',
+  WB: 'Well-being', SC: 'Self-control', EM: 'Emotionality', SO: 'Sociability',
+  IQ: 'Cognitive', STRESS: 'Stress', RESILIENCE: 'Resilience', SATISFACTION: 'Satisfaction', FLOURISHING: 'Flourishing',
+  PO: 'Power', AC: 'Achievement', HE: 'Hedonism', ST: 'Stimulation', SD: 'Self-Direction',
+  UN: 'Universalism', BE: 'Benevolence', TR: 'Tradition', CO: 'Conformity', SE: 'Security',
+  MACH: 'Machiavellianism', NARC: 'Narcissism', PSYC: 'Psychopathy',
+  N: 'Neuroticism', O: 'Openness',
+};
+
 type AssessmentState = 'list' | 'taking' | 'results';
 
 export default function AssessmentsTab() {
@@ -444,19 +455,36 @@ export default function AssessmentsTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-5 gap-2 text-center">
-                    {(['O', 'C', 'E', 'A', 'N'] as TraitKey[]).map((trait) => {
-                      const scores = result.scores as TraitScores;
-                      return (
-                        <div key={trait} className="p-2 bg-[#0f172a]/5 rounded-md">
-                          <div className="text-xs text-gray-500">{trait}</div>
-                          <div className="text-sm font-semibold text-[#0f172a]">
-                            {Math.round(scores[trait])}%
+                  {result.assessment_type === 'IPIP-NEO-120' ? (
+                    <div className="grid grid-cols-5 gap-2 text-center">
+                      {(['O', 'C', 'E', 'A', 'N'] as TraitKey[]).map((trait) => {
+                        const scores = result.scores as TraitScores;
+                        return (
+                          <div key={trait} className="p-2 bg-[#0f172a]/5 rounded-md">
+                            <div className="text-xs text-gray-500">{traitNames[trait]}</div>
+                            <div className="text-sm font-semibold text-[#0f172a]">
+                              {Math.round(scores[trait])}%
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
+                      {Object.entries(result.scores as Record<string, number>).map(([key, value]) => {
+                        const label = traitKeyLabels[key] || key;
+                        return (
+                          <div key={key} className="p-2 bg-[#0f172a]/5 rounded-md">
+                            <div className="text-xs text-gray-500 truncate" title={label}>{label}</div>
+                            <div className="text-sm font-semibold text-[#0f172a]">
+                              {typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}
+                              {typeof value === 'number' && (result.scores as Record<string, number>)[key] <= 100 ? '%' : ''}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

@@ -81,6 +81,9 @@ interface TraitScore {
   score: number;
   percentageScore?: number;
   color?: string;
+  interpretation?: string;
+  maxScore?: number;
+  percentile?: number;
 }
 
 interface AssessmentResult {
@@ -172,7 +175,26 @@ export default function ExploreAssessmentsTab() {
       return res.json();
     },
     onSuccess: (data) => {
-      setLatestResult(data.result);
+      const mappedResult = {
+        ...data.result,
+        traitScores: (data.result.traitScores || []).map((t: Record<string, unknown>) => ({
+          traitKey: t.key || t.traitKey || '',
+          traitName: t.name || t.traitName || '',
+          score: t.score || 0,
+          percentageScore: t.percentageScore || t.score || 0,
+          color: t.color || '',
+          interpretation: t.interpretation || '',
+          maxScore: t.maxScore,
+          percentile: t.percentile,
+        })),
+        facetScores: (data.result.facetScores || []).map((t: Record<string, unknown>) => ({
+          traitKey: t.key || t.traitKey || '',
+          traitName: t.name || t.traitName || '',
+          score: t.score || 0,
+          color: t.color || '',
+        })),
+      };
+      setLatestResult(mappedResult);
       setState('results');
       queryClient.invalidateQueries({ queryKey: ['/api/assessment/results', user?.id] });
     },
@@ -394,45 +416,60 @@ export default function ExploreAssessmentsTab() {
                 <Target className="w-5 h-5 text-primary" />
                 Your Top Career Themes
               </CardTitle>
+              <CardDescription>
+                Your Holland Code: <span className="font-semibold">{topThree.map(t => t.traitKey).join('')}</span>
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {topThree.map((trait, index) => (
-                <div key={trait.traitKey} className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-foreground">{trait.traitName}</span>
-                      <span className="text-sm text-muted-foreground">{Math.round(trait.score)}%</span>
+              {topThree.map((trait, index) => {
+                const traitInfo = latestResult.traitConfig?.traits?.find((t: { key: string }) => t.key === trait.traitKey);
+                return (
+                  <div key={trait.traitKey} className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                      {index + 1}
                     </div>
-                    <Progress value={trait.score} className="h-2" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-foreground">{trait.traitName}</span>
+                        <span className="text-sm text-muted-foreground">{Math.round(trait.score)}%</span>
+                      </div>
+                      {traitInfo?.description && (
+                        <p className="text-xs text-muted-foreground mb-1">{traitInfo.description}</p>
+                      )}
+                      <Progress value={trait.score} className="h-2" />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {traitScores.map((trait) => (
-              <Card key={trait.traitKey} className="bg-card border-border" data-testid={`card-trait-${trait.traitKey}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-semibold text-foreground">
-                    {trait.traitName}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-end gap-2">
-                      <span className="text-2xl font-bold text-foreground" data-testid={`text-score-${trait.traitKey}`}>
-                        {Math.round(trait.score)}%
-                      </span>
+            {traitScores.map((trait) => {
+              const traitInfo = latestResult.traitConfig?.traits?.find((t: { key: string }) => t.key === trait.traitKey);
+              return (
+                <Card key={trait.traitKey} className="bg-card border-border" data-testid={`card-trait-${trait.traitKey}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground">
+                      {trait.traitName}
+                    </CardTitle>
+                    {traitInfo?.description && (
+                      <CardDescription className="text-xs">{traitInfo.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-end gap-2">
+                        <span className="text-2xl font-bold text-foreground" data-testid={`text-score-${trait.traitKey}`}>
+                          {Math.round(trait.score)}%
+                        </span>
+                      </div>
+                      <Progress value={trait.score} className="h-2" />
                     </div>
-                    <Progress value={trait.score} className="h-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           <Button onClick={() => { setState('library'); setLatestResult(null); setCurrentAssessment(null); }} data-testid="button-done">
@@ -462,30 +499,36 @@ export default function ExploreAssessmentsTab() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {traitScores.map((trait) => (
-            <Card key={trait.traitKey} className="bg-card border-border" data-testid={`card-trait-${trait.traitKey}`}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base font-semibold text-foreground">
-                    {trait.traitName}
-                  </CardTitle>
-                  <Badge variant="secondary" className="text-xs">
-                    {trait.score >= 70 ? 'High' : trait.score >= 40 ? 'Moderate' : 'Low'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-foreground" data-testid={`text-score-${trait.traitKey}`}>
-                      {Math.round(trait.score)}%
-                    </span>
+          {traitScores.map((trait) => {
+            const traitInfo = latestResult.traitConfig?.traits?.find((t: { key: string }) => t.key === trait.traitKey);
+            return (
+              <Card key={trait.traitKey} className="bg-card border-border" data-testid={`card-trait-${trait.traitKey}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base font-semibold text-foreground">
+                      {trait.traitName}
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      {trait.interpretation || (trait.score >= 70 ? 'High' : trait.score >= 40 ? 'Moderate' : 'Low')}
+                    </Badge>
                   </div>
-                  <Progress value={trait.score} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  {traitInfo?.description && (
+                    <CardDescription className="text-xs mt-1">{traitInfo.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-end gap-2">
+                      <span className="text-3xl font-bold text-foreground" data-testid={`text-score-${trait.traitKey}`}>
+                        {Math.round(trait.score)}%
+                      </span>
+                    </div>
+                    <Progress value={trait.score} className="h-2" />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <Button onClick={() => { setState('library'); setLatestResult(null); setCurrentAssessment(null); }} data-testid="button-done">
