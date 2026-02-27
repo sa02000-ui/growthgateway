@@ -1,0 +1,12 @@
+I want to update the color scheme of the assessment cards on the Explore page to look more professional, calming, and cohesive (like a high-end therapy or wellness app).
+
+Please update the categoryConfig object in client/src/components/dashboard/explore-assessments-tab.tsx to use this exact code:
+
+TypeScript
+const categoryConfig: Record<string, { name: string; subtitle: string; icon: typeof Brain; description: string; color: string; bgColor: string; borderColor: string; badgeColor: string }> = {
+  'Who Am I': { name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are', color: 'text-slate-700 dark:text-slate-400', bgColor: 'bg-slate-50 dark:bg-slate-950/40', borderColor: 'border-slate-200 dark:border-slate-800', badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300' },
+  'How I Think': { name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns', color: 'text-indigo-700 dark:text-indigo-400', bgColor: 'bg-indigo-50 dark:bg-indigo-950/40', borderColor: 'border-indigo-200 dark:border-indigo-800', badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' },
+  'How I Interact': { name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors', color: 'text-orange-700 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/40', borderColor: 'border-orange-200 dark:border-orange-800', badgeColor: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience', color: 'text-emerald-700 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-950/40', borderColor: 'border-emerald-200 dark:border-emerald-800', badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' },
+};
+Also, please ensure that anywhere else in this file where you previously hardcoded 'bg-violet', 'bg-amber', 'bg-teal', or 'bg-rose' (like in the instruction cards at the start of an assessment), you update them to match their new respective category colors (Slate, Indigo, Orange, Emerald).

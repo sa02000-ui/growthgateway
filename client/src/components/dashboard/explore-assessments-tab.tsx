@@ -100,10 +100,10 @@ interface AssessmentResult {
 }
 
 const categoryConfig: Record<string, { name: string; subtitle: string; icon: typeof Brain; description: string; color: string; bgColor: string; borderColor: string; badgeColor: string }> = {
-  'Who Am I': { name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are', color: 'text-violet-700 dark:text-violet-400', bgColor: 'bg-violet-50 dark:bg-violet-950/40', borderColor: 'border-violet-200 dark:border-violet-800', badgeColor: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300' },
-  'How I Think': { name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns', color: 'text-amber-700 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-950/40', borderColor: 'border-amber-200 dark:border-amber-800', badgeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' },
-  'How I Interact': { name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors', color: 'text-teal-700 dark:text-teal-400', bgColor: 'bg-teal-50 dark:bg-teal-950/40', borderColor: 'border-teal-200 dark:border-teal-800', badgeColor: 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' },
-  'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience', color: 'text-rose-700 dark:text-rose-400', bgColor: 'bg-rose-50 dark:bg-rose-950/40', borderColor: 'border-rose-200 dark:border-rose-800', badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300' },
+  'Who Am I': { name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are', color: 'text-slate-700 dark:text-slate-400', bgColor: 'bg-slate-50 dark:bg-slate-950/40', borderColor: 'border-slate-200 dark:border-slate-800', badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300' },
+  'How I Think': { name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns', color: 'text-indigo-700 dark:text-indigo-400', bgColor: 'bg-indigo-50 dark:bg-indigo-950/40', borderColor: 'border-indigo-200 dark:border-indigo-800', badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' },
+  'How I Interact': { name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors', color: 'text-orange-700 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/40', borderColor: 'border-orange-200 dark:border-orange-800', badgeColor: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience', color: 'text-emerald-700 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-950/40', borderColor: 'border-emerald-200 dark:border-emerald-800', badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' },
 };
 
 const assessmentMeta: Record<string, { displayName: string; popularName?: string; scientificRef: string; description: string }> = {
@@ -654,90 +654,90 @@ export default function ExploreAssessmentsTab() {
         </div>
 
         {currentAssessment.slug === 'onet-riasec-30' && currentPage === 0 && (
-          <Card className="bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800">
+          <Card className="bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-teal-800 dark:text-teal-300">
+              <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
                 For each activity below, rate how much you would enjoy doing it — not whether you have the skills, but whether the activity appeals to you.
               </p>
             </CardContent>
           </Card>
         )}
         {currentAssessment.slug === 'schwartz-pvq-21' && currentPage === 0 && (
-          <Card className="bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800">
+          <Card className="bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-300">
                 Each statement describes a person. Rate how much this person is like you — how similar are their values and priorities to yours?
               </p>
             </CardContent>
           </Card>
         )}
         {currentAssessment.slug === 'short-dark-triad-sd3' && currentPage === 0 && (
-          <Card className="bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800">
+          <Card className="bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-300">
                 Rate how much you agree or disagree with each statement about yourself. There are no right or wrong answers — respond honestly.
               </p>
             </CardContent>
           </Card>
         )}
         {currentAssessment.slug === 'teique-sf-30' && currentPage === 0 && (
-          <Card className="bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800">
+          <Card className="bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-teal-800 dark:text-teal-300">
+              <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
                 Rate how much you agree or disagree with each statement about yourself. Answer based on how you typically feel, not how you think you should feel.
               </p>
             </CardContent>
           </Card>
         )}
         {(currentAssessment.slug === 'pss-10') && currentPage === 0 && (
-          <Card className="bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800">
+          <Card className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
                 For each question, think about how often you felt or thought a certain way during the last month.
               </p>
             </CardContent>
           </Card>
         )}
         {(currentAssessment.slug === 'icar-16') && currentPage === 0 && (
-          <Card className="bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800">
+          <Card className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
                 Select the best answer for each question. Take your time — there is no time limit.
               </p>
             </CardContent>
           </Card>
         )}
         {(currentAssessment.slug === 'grit-s-8') && currentPage === 0 && (
-          <Card className="bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800">
+          <Card className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
                 Rate how much each statement describes you. Think about how you generally are, not how you wish to be.
               </p>
             </CardContent>
           </Card>
         )}
         {(currentAssessment.slug === 'ipip-neo-120') && currentPage === 0 && (
-          <Card className="bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800">
+          <Card className="bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-300">
                 Rate how accurately each statement describes you as you generally are now, not as you wish to be in the future.
               </p>
             </CardContent>
           </Card>
         )}
         {(['swls-5', 'flourishing-8'].includes(currentAssessment.slug || '')) && currentPage === 0 && (
-          <Card className="bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800">
+          <Card className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
                 Rate how much you agree or disagree with each statement about your life.
               </p>
             </CardContent>
           </Card>
         )}
         {(currentAssessment.slug === 'brs-6') && currentPage === 0 && (
-          <Card className="bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800">
+          <Card className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
                 Rate how much you agree or disagree with each statement about how you handle stress and adversity.
               </p>
             </CardContent>
