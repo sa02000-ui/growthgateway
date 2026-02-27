@@ -637,7 +637,7 @@ export default function ExploreAssessmentsTab() {
           </Button>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-foreground" data-testid="text-assessment-title">
-              {currentAssessment.name}
+              {getDisplayName(currentAssessment.slug || currentAssessment.name)}
             </h1>
             <p className="text-sm text-muted-foreground">
               Page {currentPage + 1} of {totalPages}
@@ -653,21 +653,120 @@ export default function ExploreAssessmentsTab() {
           <Progress value={completionPct} className="h-2" />
         </div>
 
+        {currentAssessment.slug === 'onet-riasec-30' && currentPage === 0 && (
+          <Card className="bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-teal-800 dark:text-teal-300">
+                For each activity below, rate how much you would enjoy doing it — not whether you have the skills, but whether the activity appeals to you.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {currentAssessment.slug === 'schwartz-pvq-21' && currentPage === 0 && (
+          <Card className="bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+                Each statement describes a person. Rate how much this person is like you — how similar are their values and priorities to yours?
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {currentAssessment.slug === 'short-dark-triad-sd3' && currentPage === 0 && (
+          <Card className="bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+                Rate how much you agree or disagree with each statement about yourself. There are no right or wrong answers — respond honestly.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {currentAssessment.slug === 'teique-sf-30' && currentPage === 0 && (
+          <Card className="bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-teal-800 dark:text-teal-300">
+                Rate how much you agree or disagree with each statement about yourself. Answer based on how you typically feel, not how you think you should feel.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {(currentAssessment.slug === 'pss-10') && currentPage === 0 && (
+          <Card className="bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+                For each question, think about how often you felt or thought a certain way during the last month.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {(currentAssessment.slug === 'icar-16') && currentPage === 0 && (
+          <Card className="bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                Select the best answer for each question. Take your time — there is no time limit.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {(currentAssessment.slug === 'grit-s-8') && currentPage === 0 && (
+          <Card className="bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                Rate how much each statement describes you. Think about how you generally are, not how you wish to be.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {(currentAssessment.slug === 'ipip-neo-120') && currentPage === 0 && (
+          <Card className="bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-violet-800 dark:text-violet-300">
+                Rate how accurately each statement describes you as you generally are now, not as you wish to be in the future.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {(['swls-5', 'flourishing-8'].includes(currentAssessment.slug || '')) && currentPage === 0 && (
+          <Card className="bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+                Rate how much you agree or disagree with each statement about your life.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {(currentAssessment.slug === 'brs-6') && currentPage === 0 && (
+          <Card className="bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
+                Rate how much you agree or disagree with each statement about how you handle stress and adversity.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="bg-card border-border">
           <CardContent className="p-6 space-y-8">
-            {pageQuestions.map((question) => (
-              <div key={question.questionNumber} className="space-y-4">
-                <div className="flex gap-3">
-                  <span className="text-sm font-medium text-muted-foreground min-w-[2rem]">
-                    {question.questionNumber}.
-                  </span>
-                  <p className="text-foreground font-medium" data-testid={`text-question-${question.questionNumber}`}>
-                    {question.text}
-                  </p>
+            {pageQuestions.map((question) => {
+              const slug = currentAssessment.slug;
+              let questionPrefix = '';
+              if (slug === 'onet-riasec-30') {
+                questionPrefix = 'How much would you enjoy: ';
+              }
+
+              return (
+                <div key={question.questionNumber} className="space-y-4">
+                  <div className="flex gap-3">
+                    <span className="text-sm font-medium text-muted-foreground min-w-[2rem]">
+                      {question.questionNumber}.
+                    </span>
+                    <p className="text-foreground font-medium" data-testid={`text-question-${question.questionNumber}`}>
+                      {questionPrefix}{question.text}{slug === 'onet-riasec-30' ? '?' : ''}
+                    </p>
+                  </div>
+                  {renderQuestionInput(question)}
                 </div>
-                {renderQuestionInput(question)}
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
 

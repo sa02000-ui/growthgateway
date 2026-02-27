@@ -20,11 +20,11 @@ interface Question {
 }
 
 const likertScale = [
-  { value: 1, label: "Very Inaccurate" },
-  { value: 2, label: "Moderately Inaccurate" },
-  { value: 3, label: "Neither" },
-  { value: 4, label: "Moderately Accurate" },
-  { value: 5, label: "Very Accurate" },
+  { value: 1, label: "Strongly Disagree" },
+  { value: 2, label: "Disagree" },
+  { value: 3, label: "Neutral" },
+  { value: 4, label: "Agree" },
+  { value: 5, label: "Strongly Agree" },
 ];
 
 type FeedbackState = 'intro' | 'taking' | 'identity' | 'success';
@@ -282,7 +282,16 @@ export default function FeedbackPage() {
         </header>
 
         <main className="flex-1 p-4 md:p-8">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto space-y-4">
+            {currentPage === 0 && (
+              <Card className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                    Rate how much you agree or disagree with each statement about <strong>{userName}</strong>. Base your answers on what you've personally observed — there are no right or wrong responses.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             <Card className="bg-card border-border">
               <CardContent className="p-6 space-y-8">
                 {pageQuestions.map((question) => (
@@ -292,7 +301,7 @@ export default function FeedbackPage() {
                         {question.id}.
                       </span>
                       <p className="text-foreground font-medium" data-testid={`text-question-${question.id}`}>
-                        {userName} tends to: {question.text.toLowerCase()}
+                        {question.text}
                       </p>
                     </div>
                     <RadioGroup

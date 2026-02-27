@@ -444,7 +444,26 @@ export async function registerRoutes(
         const inputType = (assessment.input_type as string) || 'likert_5';
         let likertScale: { value: number; label: string }[] = [];
         
-        if (inputType === 'likert_5') {
+        const aSlug = assessment.slug as string;
+        if (inputType === 'likert_5' && aSlug === 'onet-riasec-30') {
+          likertScale = [
+            { value: 1, label: 'Strongly Dislike' }, { value: 2, label: 'Dislike' },
+            { value: 3, label: 'Unsure' }, { value: 4, label: 'Like' },
+            { value: 5, label: 'Strongly Like' },
+          ];
+        } else if (inputType === 'likert_5' && aSlug === 'brs-6') {
+          likertScale = [
+            { value: 1, label: 'Strongly Disagree' }, { value: 2, label: 'Disagree' },
+            { value: 3, label: 'Neutral' }, { value: 4, label: 'Agree' },
+            { value: 5, label: 'Strongly Agree' },
+          ];
+        } else if (inputType === 'likert_5' && aSlug === 'grit-s-8') {
+          likertScale = [
+            { value: 1, label: 'Not Like Me At All' }, { value: 2, label: 'Not Much Like Me' },
+            { value: 3, label: 'Somewhat Like Me' }, { value: 4, label: 'Mostly Like Me' },
+            { value: 5, label: 'Very Much Like Me' },
+          ];
+        } else if (inputType === 'likert_5') {
           likertScale = [
             { value: 1, label: 'Very Inaccurate' }, { value: 2, label: 'Moderately Inaccurate' },
             { value: 3, label: 'Neither Accurate Nor Inaccurate' },
@@ -515,7 +534,33 @@ export async function registerRoutes(
       const inputType = assessment.input_type || 'likert_5';
       let likertScale: { value: number; label: string }[] = [];
       
-      if (inputType === 'likert_5') {
+      const slug = assessment.slug as string;
+
+      if (inputType === 'likert_5' && slug === 'onet-riasec-30') {
+        likertScale = [
+          { value: 1, label: 'Strongly Dislike' },
+          { value: 2, label: 'Dislike' },
+          { value: 3, label: 'Unsure' },
+          { value: 4, label: 'Like' },
+          { value: 5, label: 'Strongly Like' },
+        ];
+      } else if (inputType === 'likert_5' && slug === 'brs-6') {
+        likertScale = [
+          { value: 1, label: 'Strongly Disagree' },
+          { value: 2, label: 'Disagree' },
+          { value: 3, label: 'Neutral' },
+          { value: 4, label: 'Agree' },
+          { value: 5, label: 'Strongly Agree' },
+        ];
+      } else if (inputType === 'likert_5' && slug === 'grit-s-8') {
+        likertScale = [
+          { value: 1, label: 'Not Like Me At All' },
+          { value: 2, label: 'Not Much Like Me' },
+          { value: 3, label: 'Somewhat Like Me' },
+          { value: 4, label: 'Mostly Like Me' },
+          { value: 5, label: 'Very Much Like Me' },
+        ];
+      } else if (inputType === 'likert_5') {
         likertScale = [
           { value: 1, label: 'Very Inaccurate' },
           { value: 2, label: 'Moderately Inaccurate' },
