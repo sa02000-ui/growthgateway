@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UsersRound, Plus, Settings, Users, Building2, Home, Lock, Eye, EyeOff, Mail, Trash2, X, Shield, Share2 } from 'lucide-react';
+import { UsersRound, Plus, Settings, Users, Building2, Home, Lock, Eye, EyeOff, Mail, Trash2, X, Shield, Share2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
 
@@ -34,47 +34,6 @@ interface Group {
   };
 }
 
-const defaultGroups: Group[] = [
-  {
-    id: '1',
-    name: 'Family',
-    type: 'family',
-    icon: Home,
-    members: [
-      { id: '1', name: 'Jane Doe', email: 'jane@example.com', role: 'Spouse' },
-      { id: '2', name: 'Alex Doe', email: 'alex@example.com', role: 'Child' },
-      { id: '3', name: 'Sam Doe', email: 'sam@example.com', role: 'Child' },
-    ],
-    lastActivity: '2 days ago',
-    privacySettings: { showAverages: true, showIndividual: false, anonymizeMembers: true },
-  },
-  {
-    id: '2',
-    name: 'Product Team',
-    type: 'team',
-    icon: Building2,
-    members: [
-      { id: '4', name: 'Sarah Johnson', email: 'sarah@example.com', role: 'Manager' },
-      { id: '5', name: 'Michael Chen', email: 'michael@example.com', role: 'Engineer' },
-      { id: '6', name: 'Emily Davis', email: 'emily@example.com', role: 'Designer' },
-      { id: '7', name: 'James Wilson', email: 'james@example.com', role: 'Engineer' },
-    ],
-    lastActivity: '1 day ago',
-    privacySettings: { showAverages: true, showIndividual: true, anonymizeMembers: false },
-  },
-  {
-    id: '3',
-    name: 'Close Friends',
-    type: 'friends',
-    icon: Users,
-    members: [
-      { id: '8', name: 'Chris Martinez', email: 'chris@example.com', role: 'Friend' },
-      { id: '9', name: 'Taylor Brown', email: 'taylor@example.com', role: 'Friend' },
-    ],
-    lastActivity: '1 week ago',
-    privacySettings: { showAverages: true, showIndividual: false, anonymizeMembers: true },
-  },
-];
 
 const groupTypes = [
   { value: 'family', label: 'Family', icon: Home },
@@ -85,7 +44,8 @@ const groupTypes = [
 export default function FamilyTeamsTab() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [groups, setGroups] = useState<Group[]>(defaultGroups);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -104,6 +64,49 @@ export default function FamilyTeamsTab() {
       default: return Users;
     }
   };
+
+  useEffect(() => {
+    async function fetchGroups() {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/groups/${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const mappedGroups = (data.groups || []).map((g: any) => ({
+            id: g.id,
+            name: g.name,
+            type: g.type,
+            icon: getIconForType(g.type),
+            members: [],
+            lastActivity: new Date(g.created_at).toLocaleDateString(),
+            privacySettings: {
+              showAverages: true,
+              showIndividual: false,
+              anonymizeMembers: g.privacy_level === 'anonymous',
+            },
+          }));
+          setGroups(mappedGroups);
+        }
+      } catch (error) {
+        console.error('Failed to fetch groups:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchGroups();
+  }, [user?.id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const handleCreateGroup = () => {
     if (!newGroupName.trim()) {

@@ -1,0 +1,65 @@
+The client/src/components/dashboard/family-teams-tab.tsx component is currently showing hardcoded defaultGroups data to all users. We need to remove the fake data and wire it up to fetch the user's actual groups from the backend API.
+
+1. REMOVE FAKE DATA
+
+Delete the entire const defaultGroups: Group[] = [...] array definition.
+
+Change the initial state to an empty array:
+const [groups, setGroups] = useState<Group[]>([]);
+
+Add a loading state:
+const [isLoading, setIsLoading] = useState(true);
+
+2. FETCH REAL DATA
+
+Add a useEffect hook to fetch groups when the component mounts or the user changes:
+
+JavaScript
+useEffect(() => {
+  async function fetchGroups() {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/groups/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Map backend data to frontend Group interface
+        const mappedGroups = data.groups.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          type: g.type,
+          icon: getIconForType(g.type),
+          members: [], // We'll fetch members on demand later if needed, or leave empty for the overview
+          lastActivity: new Date(g.created_at).toLocaleDateString(),
+          privacySettings: {
+            showAverages: true,
+            showIndividual: false,
+            anonymizeMembers: g.privacy_level === 'anonymous',
+          },
+        }));
+        setGroups(mappedGroups);
+      }
+    } catch (error) {
+      console.error('Failed to fetch groups:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  fetchGroups();
+}, [user?.id]);
+3. HANDLE LOADING STATE
+
+If isLoading is true, render a loading spinner instead of the main content:
+
+TypeScript
+if (isLoading) {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+Ensure Loader2 is imported from lucide-react.
