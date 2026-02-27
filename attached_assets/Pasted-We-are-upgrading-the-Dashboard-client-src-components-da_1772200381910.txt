@@ -1,0 +1,117 @@
+We are upgrading the Dashboard (client/src/components/dashboard/home-tab.tsx) to allow users to filter the Trait Timeline chart to show scores from ANY assessment they have taken, while keeping the Radar and Comparison components anchored to the Big Five.
+
+1. ADD NEW IMPORTS & STATE
+
+At the top of the file, ensure you import the Select components:
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+Inside the HomeTab component, add a new state for the dropdown:
+const [selectedTimeline, setSelectedTimeline] = useState<string>('Big Five');
+
+2. FETCH ALL DATA AGAIN
+
+In the fetchData function, remove the .in('assessment_type', ...) filter we added previously. We need all results again:
+
+JavaScript
+const { data: resultsData, error: resultsError } = await supabase
+  .from('results_log')
+  .select('*')
+  .eq('user_id', user.id)
+  .order('completed_at', { ascending: false });
+3. SEGREGATE DATA STREAMS
+
+Replace the current chartData, baseline, and latest variable declarations with this new segregation logic:
+
+JavaScript
+// 1. Identify available assessments for the dropdown
+const bigFiveNames = ['IPIP-NEO-120', 'Big Five Personality Assessment'];
+const allAssessmentTypes = Array.from(new Set(results.map(r => r.assessment_type)));
+const dropdownOptions = ['Big Five', ...allAssessmentTypes.filter(a => !bigFiveNames.includes(a))];
+// 2. Lock Radar and Comparison to Big Five ONLY
+const bigFiveResults = results.filter(r => bigFiveNames.includes(r.assessment_type));
+const sortedBigFive = [...bigFiveResults].sort((a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
+const baseline = sortedBigFive[0];
+const latest = sortedBigFive[sortedBigFive.length - 1];
+const hasComparison = baseline && latest && baseline.id !== latest.id;
+const comparison = hasComparison ? calculateComparison(baseline, latest) : null;
+// 3. Prepare Dynamic Data for the Timeline Chart
+const timelineRawResults = selectedTimeline === 'Big Five'
+  ? bigFiveResults
+  : results.filter(r => r.assessment_type === selectedTimeline);
+const filteredTimelineResults = filterTo30DayWindows(timelineRawResults);
+const chartData = filteredTimelineResults.map(result => {
+  const point: any = {
+    date: format(new Date(result.completed_at), 'MMM d'),
+    fullDate: format(new Date(result.completed_at), 'MMM d, yyyy')
+  };
+  if (selectedTimeline === 'Big Five') {
+    point.N = Math.round(result.scores.N || 0);
+    point.E = Math.round(result.scores.E || 0);
+    point.O = Math.round(result.scores.O || 0);
+    point.A = Math.round(result.scores.A || 0);
+    point.C = Math.round(result.scores.C || 0);
+  } else {
+    Object.keys(result.scores || {}).forEach(key => {
+      point[key] = typeof result.scores[key] === 'number' ? Math.round(result.scores[key]) : result.scores[key];
+    });
+  }
+  return point;
+});
+const dataKeys = selectedTimeline === 'Big Five'
+  ? ['O', 'C', 'E', 'A', 'N']
+  : Object.keys(filteredTimelineResults[0]?.scores || {}).filter(k => typeof filteredTimelineResults[0].scores[k] === 'number');
+const dynamicColors = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488'];
+```
+4. UPDATE THE UI (Chart Header and Lines)
+
+Update the CardHeader of the Trait Timeline to include the Select dropdown:
+
+TypeScript
+<CardHeader className="pb-2">
+  <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+        <Activity className="w-5 h-5 text-primary" />
+        Trait Timeline
+      </CardTitle>
+      <CardDescription>How your traits have evolved</CardDescription>
+    </div>
+    <div className="flex items-center gap-2">
+      <Select value={selectedTimeline} onValueChange={setSelectedTimeline}>
+        <SelectTrigger className="w-[180px] h-8 text-xs">
+          <SelectValue placeholder="Select assessment" />
+        </SelectTrigger>
+        <SelectContent>
+          {dropdownOptions.map(opt => (
+            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {filteredTimelineResults.length > 0 && (
+        <Badge variant="secondary" className="text-xs">
+          {filteredTimelineResults.length} point{filteredTimelineResults.length !== 1 ? 's' : ''}
+        </Badge>
+      )}
+    </div>
+  </div>
+</CardHeader>
+Finally, update the <LineChart> rendering to map over the dynamic dataKeys instead of the hardcoded traits:
+
+TypeScript
+{dataKeys.map((key, index) => {
+  const strokeColor = selectedTimeline === 'Big Five' ? traitColors[key as TraitKey] : dynamicColors[index % dynamicColors.length];
+  const lineName = selectedTimeline === 'Big Five' ? traitNames[key as TraitKey] : key;
+  return (
+    <Line
+      key={key}
+      type="monotone"
+      dataKey={key}
+      name={lineName}
+      stroke={strokeColor}
+      strokeWidth={2}
+      dot={{ fill: strokeColor, strokeWidth: 2, r: 3 }}
+      activeDot={{ r: 5, strokeWidth: 0 }}
+    />
+  );
+})}
+```"

@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users, Bug } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import AIInsightCard from './ai-insight-card';
@@ -109,6 +110,7 @@ export default function HomeTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [peerCount, setPeerCount] = useState(0);
   const [peerAverages, setPeerAverages] = useState<Record<TraitKey, number> | null>(null);
+  const [selectedTimeline, setSelectedTimeline] = useState<string>('Big Five');
 
   // Fetch assessment results directly from Supabase with user's auth
   useEffect(() => {
@@ -125,7 +127,6 @@ export default function HomeTab() {
           .from('results_log')
           .select('*')
           .eq('user_id', user.id)
-          .in('assessment_type', ['IPIP-NEO-120', 'Big Five Personality Assessment'])
           .order('completed_at', { ascending: false });
 
         if (resultsError) {
@@ -179,25 +180,43 @@ export default function HomeTab() {
     fetchData();
   }, [user?.id, supabase]);
 
-  const filteredResults = filterTo30DayWindows(results);
-  
-  const chartData = filteredResults.map(result => ({
-    date: format(new Date(result.completed_at), 'MMM d'),
-    fullDate: format(new Date(result.completed_at), 'MMM d, yyyy'),
-    N: Math.round(result.scores.N),
-    E: Math.round(result.scores.E),
-    O: Math.round(result.scores.O),
-    A: Math.round(result.scores.A),
-    C: Math.round(result.scores.C),
-  }));
+  const bigFiveNames = ['IPIP-NEO-120', 'Big Five Personality Assessment'];
+  const allAssessmentTypes = Array.from(new Set(results.map(r => r.assessment_type)));
+  const dropdownOptions = ['Big Five', ...allAssessmentTypes.filter(a => !bigFiveNames.includes(a))];
 
-  const sortedByDate = [...results].sort((a, b) => 
-    new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
-  );
-  const baseline = sortedByDate[0];
-  const latest = sortedByDate[sortedByDate.length - 1];
+  const bigFiveResults = results.filter(r => bigFiveNames.includes(r.assessment_type));
+  const sortedBigFive = [...bigFiveResults].sort((a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
+  const baseline = sortedBigFive[0];
+  const latest = sortedBigFive[sortedBigFive.length - 1];
   const hasComparison = baseline && latest && baseline.id !== latest.id;
   const comparison = hasComparison ? calculateComparison(baseline, latest) : null;
+
+  const timelineRawResults = selectedTimeline === 'Big Five'
+    ? bigFiveResults
+    : results.filter(r => r.assessment_type === selectedTimeline);
+  const filteredTimelineResults = filterTo30DayWindows(timelineRawResults);
+  const chartData = filteredTimelineResults.map(result => {
+    const point: any = {
+      date: format(new Date(result.completed_at), 'MMM d'),
+      fullDate: format(new Date(result.completed_at), 'MMM d, yyyy')
+    };
+    if (selectedTimeline === 'Big Five') {
+      point.N = Math.round(result.scores.N || 0);
+      point.E = Math.round(result.scores.E || 0);
+      point.O = Math.round(result.scores.O || 0);
+      point.A = Math.round(result.scores.A || 0);
+      point.C = Math.round(result.scores.C || 0);
+    } else {
+      Object.keys(result.scores || {}).forEach(key => {
+        point[key] = typeof result.scores[key] === 'number' ? Math.round(result.scores[key]) : result.scores[key];
+      });
+    }
+    return point;
+  });
+  const dataKeys = selectedTimeline === 'Big Five'
+    ? ['O', 'C', 'E', 'A', 'N']
+    : Object.keys(filteredTimelineResults[0]?.scores || {}).filter(k => typeof filteredTimelineResults[0].scores[k] === 'number');
+  const dynamicColors = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488'];
 
   const radarData = latest && latest.scores && latest.scores.O !== undefined ? [
     { trait: 'Openness', self: Math.round(latest.scores.O), peer: peerAverages ? Math.round(peerAverages.O) : null, fullMark: 100 },
@@ -591,15 +610,25 @@ export default function HomeTab() {
                   <Activity className="w-5 h-5 text-primary" />
                   Trait Timeline
                 </CardTitle>
-                <CardDescription>
-                  How your traits have evolved
-                </CardDescription>
+                <CardDescription>How your traits have evolved</CardDescription>
               </div>
-              {filteredResults.length > 0 && (
-                <Badge variant="secondary" className="text-xs" data-testid="badge-data-points">
-                  {filteredResults.length} point{filteredResults.length !== 1 ? 's' : ''}
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                <Select value={selectedTimeline} onValueChange={setSelectedTimeline}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs" data-testid="select-timeline-assessment">
+                    <SelectValue placeholder="Select assessment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dropdownOptions.map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {filteredTimelineResults.length > 0 && (
+                  <Badge variant="secondary" className="text-xs" data-testid="badge-data-points">
+                    {filteredTimelineResults.length} point{filteredTimelineResults.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
@@ -638,18 +667,22 @@ export default function HomeTab() {
                       wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                       formatter={(value) => traitNames[value as TraitKey] || value}
                     />
-                    {(['O', 'C', 'E', 'A', 'N'] as TraitKey[]).map((trait) => (
-                      <Line
-                        key={trait}
-                        type="monotone"
-                        dataKey={trait}
-                        name={trait}
-                        stroke={traitColors[trait]}
-                        strokeWidth={2}
-                        dot={{ fill: traitColors[trait], strokeWidth: 2, r: 3 }}
-                        activeDot={{ r: 5, strokeWidth: 0 }}
-                      />
-                    ))}
+                    {dataKeys.map((key, index) => {
+                      const strokeColor = selectedTimeline === 'Big Five' ? traitColors[key as TraitKey] : dynamicColors[index % dynamicColors.length];
+                      const lineName = selectedTimeline === 'Big Five' ? traitNames[key as TraitKey] : key;
+                      return (
+                        <Line
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          name={lineName}
+                          stroke={strokeColor}
+                          strokeWidth={2}
+                          dot={{ fill: strokeColor, strokeWidth: 2, r: 3 }}
+                          activeDot={{ r: 5, strokeWidth: 0 }}
+                        />
+                      );
+                    })}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
