@@ -62,6 +62,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (user && supabaseClient) {
+        timeoutId = setTimeout(() => {
+          console.log('Session expired due to inactivity.');
+          signOut();
+        }, INACTIVITY_TIMEOUT);
+      }
+    };
+
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+
+    if (user) {
+      resetTimer();
+      activityEvents.forEach(event => {
+        document.addEventListener(event, resetTimer);
+      });
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [user, supabaseClient]);
+
   return (
     <AuthContext.Provider value={{ user, session, loading, supabase: supabaseClient, signOut }}>
       {children}
