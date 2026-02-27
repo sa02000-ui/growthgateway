@@ -89,13 +89,17 @@ function filterTo30DayWindows(results: AssessmentResult[]): AssessmentResult[] {
 
 function calculateComparison(baseline: AssessmentResult, latest: AssessmentResult) {
   const traits: TraitKey[] = ['O', 'C', 'E', 'A', 'N'];
-  return traits.map(trait => ({
-    trait,
-    name: traitNames[trait],
-    baseline: Math.round(baseline.scores[trait]),
-    latest: Math.round(latest.scores[trait]),
-    change: Math.round(latest.scores[trait] - baseline.scores[trait]),
-  }));
+  return traits.map(trait => {
+    const baseScore = baseline?.scores?.[trait] || 0;
+    const lateScore = latest?.scores?.[trait] || 0;
+    return {
+      trait,
+      name: traitNames[trait],
+      baseline: Math.round(baseScore),
+      latest: Math.round(lateScore),
+      change: Math.round(lateScore - baseScore),
+    };
+  });
 }
 
 export default function HomeTab() {
@@ -121,6 +125,7 @@ export default function HomeTab() {
           .from('results_log')
           .select('*')
           .eq('user_id', user.id)
+          .in('assessment_type', ['IPIP-NEO-120', 'Big Five Personality Assessment'])
           .order('completed_at', { ascending: false });
 
         if (resultsError) {
@@ -194,37 +199,12 @@ export default function HomeTab() {
   const hasComparison = baseline && latest && baseline.id !== latest.id;
   const comparison = hasComparison ? calculateComparison(baseline, latest) : null;
 
-  const radarData = latest ? [
-    { 
-      trait: 'Openness', 
-      self: Math.round(latest.scores.O), 
-      peer: peerAverages ? Math.round(peerAverages.O) : null,
-      fullMark: 100 
-    },
-    { 
-      trait: 'Conscientiousness', 
-      self: Math.round(latest.scores.C), 
-      peer: peerAverages ? Math.round(peerAverages.C) : null,
-      fullMark: 100 
-    },
-    { 
-      trait: 'Extraversion', 
-      self: Math.round(latest.scores.E), 
-      peer: peerAverages ? Math.round(peerAverages.E) : null,
-      fullMark: 100 
-    },
-    { 
-      trait: 'Agreeableness', 
-      self: Math.round(latest.scores.A), 
-      peer: peerAverages ? Math.round(peerAverages.A) : null,
-      fullMark: 100 
-    },
-    { 
-      trait: 'Neuroticism', 
-      self: Math.round(latest.scores.N), 
-      peer: peerAverages ? Math.round(peerAverages.N) : null,
-      fullMark: 100 
-    },
+  const radarData = latest && latest.scores && latest.scores.O !== undefined ? [
+    { trait: 'Openness', self: Math.round(latest.scores.O), peer: peerAverages ? Math.round(peerAverages.O) : null, fullMark: 100 },
+    { trait: 'Conscientiousness', self: Math.round(latest.scores.C), peer: peerAverages ? Math.round(peerAverages.C) : null, fullMark: 100 },
+    { trait: 'Extraversion', self: Math.round(latest.scores.E), peer: peerAverages ? Math.round(peerAverages.E) : null, fullMark: 100 },
+    { trait: 'Agreeableness', self: Math.round(latest.scores.A), peer: peerAverages ? Math.round(peerAverages.A) : null, fullMark: 100 },
+    { trait: 'Neuroticism', self: Math.round(latest.scores.N), peer: peerAverages ? Math.round(peerAverages.N) : null, fullMark: 100 },
   ] : [];
 
   const [feedbackToken, setFeedbackToken] = useState<string | null>(null);

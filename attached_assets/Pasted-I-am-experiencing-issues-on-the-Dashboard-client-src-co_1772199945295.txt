@@ -1,0 +1,46 @@
+I am experiencing issues on the Dashboard (client/src/components/dashboard/home-tab.tsx) where the charts and tables sometimes disappear or fail to render the correct data. We need to fix the data filtering and rendering logic.
+
+1. FIX DATA FILTERING (Only use Big 5 assessments for these charts)
+
+Update the fetchData function's Supabase query for results_log to strictly filter for the Big 5 assessment. Change the query to:
+
+JavaScript
+const { data: resultsData, error: resultsError } = await supabase
+  .from('results_log')
+  .select('*')
+  .eq('user_id', user.id)
+  // Ensure we only chart the main personality assessment, not cognitive or specialized tests
+  .in('assessment_type', ['IPIP-NEO-120', 'Big Five Personality Assessment'])
+  .order('completed_at', { ascending: false });
+2. FIX RADAR CHART DATA MAPPING
+
+Update the radarData mapping to safely handle missing peer data without breaking the chart. Change radarData to:
+
+JavaScript
+const radarData = latest && latest.scores && latest.scores.O !== undefined ? [
+  { trait: 'Openness', self: Math.round(latest.scores.O), peer: peerAverages ? Math.round(peerAverages.O) : null, fullMark: 100 },
+  { trait: 'Conscientiousness', self: Math.round(latest.scores.C), peer: peerAverages ? Math.round(peerAverages.C) : null, fullMark: 100 },
+  { trait: 'Extraversion', self: Math.round(latest.scores.E), peer: peerAverages ? Math.round(peerAverages.E) : null, fullMark: 100 },
+  { trait: 'Agreeableness', self: Math.round(latest.scores.A), peer: peerAverages ? Math.round(peerAverages.A) : null, fullMark: 100 },
+  { trait: 'Neuroticism', self: Math.round(latest.scores.N), peer: peerAverages ? Math.round(peerAverages.N) : null, fullMark: 100 },
+] : [];
+3. FIX COMPARISON TABLE CRASH
+
+Update calculateComparison so it doesn't crash if latest is missing specific traits.
+
+JavaScript
+function calculateComparison(baseline: AssessmentResult, latest: AssessmentResult) {
+  const traits: TraitKey[] = ['O', 'C', 'E', 'A', 'N'];
+  return traits.map(trait => {
+    const baseScore = baseline?.scores?.[trait] || 0;
+    const lateScore = latest?.scores?.[trait] || 0;
+    return {
+      trait,
+      name: traitNames[trait],
+      baseline: Math.round(baseScore),
+      latest: Math.round(lateScore),
+      change: Math.round(lateScore - baseScore),
+    };
+  });
+}
+Please apply these three fixes to ensure the charts only try to render valid Big 5 data.
