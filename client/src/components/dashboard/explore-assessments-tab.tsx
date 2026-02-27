@@ -98,11 +98,79 @@ interface AssessmentResult {
   traitConfig: TraitConfig;
 }
 
-const categoryConfig: Record<string, { name: string; subtitle: string; icon: typeof Brain; description: string }> = {
-  'Who Am I': { name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are' },
-  'How I Think': { name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns' },
-  'How I Interact': { name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors' },
-  'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience' },
+const categoryConfig: Record<string, { name: string; subtitle: string; icon: typeof Brain; description: string; color: string; bgColor: string; borderColor: string; badgeColor: string }> = {
+  'Who Am I': { name: 'Who Am I?', subtitle: 'Core Personality', icon: Brain, description: 'Foundational personality traits that define who you are', color: 'text-violet-700 dark:text-violet-400', bgColor: 'bg-violet-50 dark:bg-violet-950/40', borderColor: 'border-violet-200 dark:border-violet-800', badgeColor: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300' },
+  'How I Think': { name: 'How I Think?', subtitle: 'Cognitive & Productivity', icon: Lightbulb, description: 'Work styles, decision-making, and thinking patterns', color: 'text-amber-700 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-950/40', borderColor: 'border-amber-200 dark:border-amber-800', badgeColor: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' },
+  'How I Interact': { name: 'How I Interact?', subtitle: 'Behavioral & Social', icon: Users, description: 'Interpersonal dynamics and social behaviors', color: 'text-teal-700 dark:text-teal-400', bgColor: 'bg-teal-50 dark:bg-teal-950/40', borderColor: 'border-teal-200 dark:border-teal-800', badgeColor: 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' },
+  'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience', color: 'text-rose-700 dark:text-rose-400', bgColor: 'bg-rose-50 dark:bg-rose-950/40', borderColor: 'border-rose-200 dark:border-rose-800', badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300' },
+};
+
+const assessmentMeta: Record<string, { displayName: string; popularName?: string; scientificRef: string; description: string }> = {
+  'ipip-neo-120': {
+    displayName: 'Big Five Personality Assessment',
+    popularName: 'Similar to Myers-Briggs / 16Personalities',
+    scientificRef: 'Johnson, J.A. (2014). Measuring thirty facets of the Five Factor Model with a 120-item public domain inventory. Journal of Research in Personality, 51, 78-89.',
+    description: 'The scientific gold standard for personality profiling. Measures Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.',
+  },
+  'schwartz-pvq-21': {
+    displayName: 'Core Values & Motivations Assessment',
+    popularName: 'Similar to VIA Character Strengths',
+    scientificRef: 'Schwartz, S.H. (2003). A proposal for measuring value orientations across nations. European Social Survey Core Questionnaire Development, Ch. 7.',
+    description: 'Identifies your core drivers and motivations — what matters most to you in life, such as achievement, security, benevolence, or self-direction.',
+  },
+  'short-dark-triad-sd3': {
+    displayName: 'Shadow Personality Traits',
+    popularName: 'Dark Triad Assessment',
+    scientificRef: 'Jones, D.N. & Paulhus, D.L. (2014). Introducing the Short Dark Triad (SD3): A brief measure of dark personality traits. Assessment, 21(1), 28-41.',
+    description: 'Measures three socially aversive traits: Machiavellianism, Narcissism, and Psychopathy. Normal personality dimensions everyone has to some degree.',
+  },
+  'icar-16': {
+    displayName: 'Logical Reasoning & Problem Solving',
+    popularName: 'Similar to IQ / Cognitive Ability Test',
+    scientificRef: 'Condon, D.M. & Revelle, W. (2014). The International Cognitive Ability Resource: Development and initial validation. Intelligence, 43, 52-64.',
+    description: 'A brief, reliable measure of cognitive ability using verbal reasoning and number series problems. Tests your analytical thinking skills.',
+  },
+  'grit-s-8': {
+    displayName: 'Grit & Perseverance Assessment',
+    popularName: 'Angela Duckworth\'s Grit Scale',
+    scientificRef: 'Duckworth, A.L. & Quinn, P.D. (2009). Development and validation of the Short Grit Scale (Grit-S). Journal of Personality Assessment, 91(2), 166-174.',
+    description: 'Measures your perseverance and passion for long-term goals. A strong predictor of success in challenging environments.',
+  },
+  'onet-riasec-30': {
+    displayName: 'Career Interest & Work Style Profile',
+    popularName: 'Holland Code / RIASEC Career Test',
+    scientificRef: 'Rounds, J. et al. (2010). O*NET Interest Profiler Short Form psychometric characteristics. U.S. Department of Labor.',
+    description: 'Identifies your career interests across six dimensions to find careers that match your natural inclinations and work preferences.',
+  },
+  'teique-sf-30': {
+    displayName: 'Emotional Intelligence Assessment',
+    popularName: 'EQ / Emotional Quotient Test',
+    scientificRef: 'Petrides, K.V. (2009). Psychometric properties of the Trait Emotional Intelligence Questionnaire (TEIQue). In C. Stough et al. (Eds.), Assessing Emotional Intelligence.',
+    description: 'Measures your emotional intelligence across four factors: Well-being, Self-control, Emotionality, and Sociability.',
+  },
+  'pss-10': {
+    displayName: 'Perceived Stress Scale',
+    scientificRef: 'Cohen, S. et al. (1983). A global measure of perceived stress. Journal of Health and Social Behavior, 24(4), 385-396.',
+    description: 'The most widely used instrument for measuring how stressful you perceive situations in your daily life.',
+  },
+  'swls-5': {
+    displayName: 'Satisfaction With Life Scale',
+    popularName: 'Life Happiness Assessment',
+    scientificRef: 'Diener, E. et al. (1985). The Satisfaction With Life Scale. Journal of Personality Assessment, 49(1), 71-75.',
+    description: 'A short, scientifically validated measure of your overall life satisfaction and subjective well-being.',
+  },
+  'brs-6': {
+    displayName: 'Resilience & Bounce-Back Assessment',
+    popularName: 'Stress Recovery Test',
+    scientificRef: 'Smith, B.W. et al. (2008). The Brief Resilience Scale: Assessing the ability to bounce back. International Journal of Behavioral Medicine, 15(3), 194-200.',
+    description: 'Measures your ability to bounce back and recover from stress, setbacks, and adversity.',
+  },
+  'flourishing-8': {
+    displayName: 'Psychological Well-Being & Flourishing',
+    popularName: 'Mental Wellness Assessment',
+    scientificRef: 'Diener, E. et al. (2010). New well-being measures: Flourishing and positive and negative feelings. Social Indicators Research, 97(2), 143-156.',
+    description: 'Measures self-perceived success in relationships, self-esteem, purpose, and optimism — how well you\'re thriving overall.',
+  },
 };
 
 const categoryOrder = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'];
@@ -780,46 +848,74 @@ export default function ExploreAssessmentsTab() {
           const CategoryIcon = group.config.icon;
           return (
             <div key={group.category} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CategoryIcon className="w-5 h-5 text-primary" />
+              <div className={`flex items-center gap-4 p-4 rounded-xl ${group.config.bgColor} border ${group.config.borderColor}`}>
+                <div className={`w-12 h-12 rounded-xl ${group.config.badgeColor} flex items-center justify-center`}>
+                  <CategoryIcon className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">{group.config.name}</h2>
+                  <h2 className={`text-xl font-bold ${group.config.color}`} data-testid={`text-category-${group.category}`}>
+                    {group.config.name}
+                  </h2>
                   <p className="text-sm text-muted-foreground">{group.config.description}</p>
                 </div>
+                <Badge variant="outline" className={`ml-auto text-xs ${group.config.badgeColor} border-0`}>
+                  {group.assessments.length} test{group.assessments.length !== 1 ? 's' : ''}
+                </Badge>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {group.assessments.map((assessment) => {
                   const lastTaken = getLastTaken(assessment.name);
                   const historyCount = getHistoryCount(assessment.name);
+                  const meta = assessmentMeta[assessment.slug || ''];
+                  const displayName = meta?.displayName || assessment.name;
+                  const popularName = meta?.popularName;
+                  const scientificRef = meta?.scientificRef;
+                  const enhancedDescription = meta?.description || assessment.description;
 
                   return (
                     <Card 
                       key={assessment.id} 
-                      className="bg-card border-border"
+                      className={`bg-card border ${group.config.borderColor}/50`}
                       data-testid={`card-assessment-${assessment.id}`}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
-                            <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2 flex-wrap">
-                              {assessment.name}
-                              {assessment.popular_equivalent && (
-                                <Badge 
-                                  variant="secondary" 
-                                  className="text-xs"
-                                  data-testid="badge-popular-equivalent"
-                                >
-                                  {assessment.popular_equivalent}
-                                </Badge>
-                              )}
+                            <CardTitle className="text-base font-semibold text-foreground leading-snug" data-testid={`text-name-${assessment.id}`}>
+                              {displayName}
                             </CardTitle>
-                            <CardDescription className="mt-1 text-sm">
-                              {assessment.description}
+                            {popularName && (
+                              <p className={`text-xs font-medium mt-0.5 ${group.config.color}`} data-testid={`text-popular-${assessment.id}`}>
+                                {popularName}
+                              </p>
+                            )}
+                            <CardDescription className="mt-1.5 text-sm">
+                              {enhancedDescription}
                             </CardDescription>
                           </div>
+                          {scientificRef && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button className="flex-shrink-0 w-7 h-7 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-colors" data-testid={`button-info-${assessment.id}`}>
+                                  <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-[320px] p-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                                    <span className="text-xs font-semibold">Scientific Reference</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">{scientificRef}</p>
+                                  <Badge variant="outline" className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Peer Reviewed
+                                  </Badge>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -841,22 +937,6 @@ export default function ExploreAssessmentsTab() {
                             </Badge>
                           )}
                         </div>
-
-                        {assessment.scientific_reference && (
-                          <div className="p-3 bg-muted/50 rounded-md">
-                            <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-                              <BookOpen className="w-3.5 h-3.5 text-primary" />
-                              <span>{assessment.scientific_reference}</span>
-                              <Badge 
-                                variant="outline" 
-                                className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
-                              >
-                                <CheckCircle2 className="w-3 h-3" />
-                                Peer Reviewed
-                              </Badge>
-                            </div>
-                          </div>
-                        )}
 
                         <div className="pt-2 flex gap-2">
                           <Button 
