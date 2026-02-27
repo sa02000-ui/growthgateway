@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ClipboardList, Play, Clock, CheckCircle2, ArrowLeft, ArrowRight, Brain, Loader2, User } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { getDisplayName } from '@/lib/assessment-display-names';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import questionsData from '@/data/questions.json';
@@ -440,7 +441,7 @@ export default function AssessmentsTab() {
                       </div>
                       <div>
                         <CardTitle className="text-base font-semibold text-[#0f172a]">
-                          {result.assessment_type as string}
+                          {getDisplayName((result.assessment_slug as string) || (result.assessment_type as string))}
                         </CardTitle>
                         <CardDescription className="text-sm mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" />

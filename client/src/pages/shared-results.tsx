@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
 import { Loader2, AlertCircle, Clock, ArrowRight } from 'lucide-react';
+import { getDisplayName } from '@/lib/assessment-display-names';
 
 type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
 
@@ -111,7 +112,7 @@ export default function SharedResultsPage() {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-xl font-bold text-foreground">Shared Assessment Results</h1>
-              <p className="text-sm text-muted-foreground">{result.assessmentType}</p>
+              <p className="text-sm text-muted-foreground">{getDisplayName(result.assessmentType)}</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4" />

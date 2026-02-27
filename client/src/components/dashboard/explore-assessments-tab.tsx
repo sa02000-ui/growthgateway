@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { getDisplayName } from '@/lib/assessment-display-names';
 import { 
   Brain, 
   Users, 
@@ -427,7 +428,7 @@ export default function ExploreAssessmentsTab() {
               <h1 className="text-2xl font-bold text-foreground" data-testid="text-results-title">
                 Your Results
               </h1>
-              <p className="text-muted-foreground">{latestResult.assessmentName}</p>
+              <p className="text-muted-foreground">{getDisplayName(latestResult.slug || latestResult.assessmentName)}</p>
             </div>
           </div>
 
@@ -474,7 +475,7 @@ export default function ExploreAssessmentsTab() {
               <h1 className="text-2xl font-bold text-foreground" data-testid="text-results-title">
                 Your Career Interest Profile
               </h1>
-              <p className="text-muted-foreground">{latestResult.assessmentName}</p>
+              <p className="text-muted-foreground">{getDisplayName(latestResult.slug || latestResult.assessmentName)}</p>
             </div>
           </div>
 
@@ -562,7 +563,7 @@ export default function ExploreAssessmentsTab() {
             <h1 className="text-2xl font-bold text-foreground" data-testid="text-results-title">
               Your Results
             </h1>
-            <p className="text-muted-foreground">{latestResult.assessmentName}</p>
+            <p className="text-muted-foreground">{getDisplayName(latestResult.slug || latestResult.assessmentName)}</p>
           </div>
         </div>
 
