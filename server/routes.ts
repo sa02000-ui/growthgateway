@@ -744,6 +744,11 @@ export async function registerRoutes(
           assessment_slug: slug,
           responses: responses,
           scores: scoresObject,
+          neuroticism_score: scoresObject['N'] ?? 0,
+          extraversion_score: scoresObject['E'] ?? 0,
+          openness_score: scoresObject['O'] ?? 0,
+          agreeableness_score: scoresObject['A'] ?? 0,
+          conscientiousness_score: scoresObject['C'] ?? 0,
         })
         .select()
         .single();

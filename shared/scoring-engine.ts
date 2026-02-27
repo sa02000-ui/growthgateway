@@ -113,16 +113,41 @@ export function calculateAverageScore(
 
   const resultTraitScores: TraitScore[] = traitConfig.traits.map(trait => {
     const data = traitScores[trait.key];
-    const avgScore = data.count > 0 ? data.total / data.count : 0;
-    const percentageScore = ((avgScore - minScale) / range) * 100;
-
+    if (data.count > 0) {
+      const avgScore = data.total / data.count;
+      const percentageScore = ((avgScore - minScale) / range) * 100;
+      return {
+        key: trait.key,
+        name: trait.name,
+        score: Math.round(percentageScore * 100) / 100,
+        maxScore: 100,
+        color: trait.color,
+        interpretation: getInterpretation(percentageScore),
+      };
+    }
+    const otherTraits = traitConfig.traits.filter(t => t.key !== trait.key && traitScores[t.key].count > 0);
+    if (otherTraits.length > 0) {
+      const compositeAvg = otherTraits.reduce((sum, t) => {
+        const d = traitScores[t.key];
+        return sum + (d.total / d.count);
+      }, 0) / otherTraits.length;
+      const percentageScore = ((compositeAvg - minScale) / range) * 100;
+      return {
+        key: trait.key,
+        name: trait.name,
+        score: Math.round(percentageScore * 100) / 100,
+        maxScore: 100,
+        color: trait.color,
+        interpretation: getInterpretation(percentageScore),
+      };
+    }
     return {
       key: trait.key,
       name: trait.name,
-      score: Math.round(percentageScore * 100) / 100,
+      score: 0,
       maxScore: 100,
       color: trait.color,
-      interpretation: getInterpretation(percentageScore),
+      interpretation: getInterpretation(0),
     };
   });
 
