@@ -531,6 +531,15 @@ export async function registerRoutes(
           { value: 6, label: 'Agree' },
           { value: 7, label: 'Strongly Agree' },
         ];
+      } else if (inputType === 'likert_6') {
+        likertScale = [
+          { value: 1, label: 'Not Like Me At All' },
+          { value: 2, label: 'Not Like Me' },
+          { value: 3, label: 'A Little Like Me' },
+          { value: 4, label: 'Somewhat Like Me' },
+          { value: 5, label: 'Like Me' },
+          { value: 6, label: 'Very Much Like Me' },
+        ];
       } else if (inputType === 'likert_0_4') {
         likertScale = [
           { value: 0, label: 'Never' },
