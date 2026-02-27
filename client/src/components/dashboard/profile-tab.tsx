@@ -357,6 +357,37 @@ export default function ProfileTab() {
     }
   };
 
+  const formatFieldName = (key: string) => {
+    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+  };
+
+  const getSnapshotChanges = (current: any, previous: any) => {
+    if (!previous) return ["Initial Profile Baseline Established"];
+
+    const changes: string[] = [];
+    const currentProfile = current.snapshot?.profile || {};
+    const previousProfile = previous.snapshot?.profile || {};
+
+    Object.keys(currentProfile).forEach(key => {
+      if (currentProfile[key] !== previousProfile[key]) {
+        const formattedKey = formatFieldName(key);
+        const oldVal = previousProfile[key] || 'None';
+        const newVal = currentProfile[key] || 'None';
+        changes.push(`${formattedKey}: "${oldVal}" \u27A4 "${newVal}"`);
+      }
+    });
+
+    const currentEvents = current.snapshot?.lifeEvents || [];
+    const previousEvents = previous.snapshot?.lifeEvents || [];
+    if (currentEvents.length > previousEvents.length) {
+      changes.push(`Added ${currentEvents.length - previousEvents.length} new life event(s)`);
+    } else if (currentEvents.length < previousEvents.length) {
+      changes.push(`Removed ${previousEvents.length - currentEvents.length} life event(s)`);
+    }
+
+    return changes.length > 0 ? changes : ["Profile saved with no demographic changes"];
+  };
+
   if (loadingProfile) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -957,90 +988,46 @@ export default function ProfileTab() {
           </CardContent>
         </Card>
 
-        {profileHistory.length > 0 && (
-          <Card>
+        {profileHistory && profileHistory.length > 0 && (
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" />
-                Profile Snapshot History
+                Chronological Profile History
               </CardTitle>
               <CardDescription>
-                A read-only timeline of your profile as it was saved at each point in time
+                A timeline of your life changes and profile updates
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="border-l-2 border-primary/20 ml-4 pl-4 space-y-6">
+              <div className="max-h-[400px] overflow-y-auto pr-4 space-y-6">
                 {profileHistory.map((entry, index) => {
-                  const snapshot = typeof entry.snapshot === 'string' ? JSON.parse(entry.snapshot) : entry.snapshot;
-                  const savedDate = snapshot?.timestamp
-                    ? new Date(snapshot.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                    : 'Unknown date';
-                  const savedTime = snapshot?.timestamp
-                    ? new Date(snapshot.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-                    : '';
-                  const snapshotProfile = snapshot?.profile || {};
-                  const snapshotEvents: LifeEventEntry[] = snapshot?.lifeEvents || [];
-
-                  const profileSummaryItems: string[] = [];
-                  if (snapshotProfile.maritalStatus) profileSummaryItems.push(snapshotProfile.maritalStatus);
-                  if (snapshotProfile.profession) profileSummaryItems.push(snapshotProfile.profession);
-                  if (snapshotProfile.educationLevel) profileSummaryItems.push(snapshotProfile.educationLevel);
-                  if (snapshotProfile.birthCountry) profileSummaryItems.push(snapshotProfile.birthCountry);
+                  const parsed = typeof entry.snapshot === 'string' ? { ...entry, snapshot: JSON.parse(entry.snapshot) } : entry;
+                  const previousRaw = profileHistory[index + 1];
+                  const previousEntry = previousRaw
+                    ? typeof previousRaw.snapshot === 'string' ? { ...previousRaw, snapshot: JSON.parse(previousRaw.snapshot) } : previousRaw
+                    : null;
+                  const changes = getSnapshotChanges(parsed, previousEntry);
 
                   return (
-                    <div key={entry.id || index} className="relative" data-testid={`timeline-entry-${index}`}>
-                      <div className="absolute -left-[1.35rem] top-1 w-2.5 h-2.5 rounded-full bg-primary/40 border-2 border-background" />
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground" data-testid={`text-snapshot-date-${index}`}>
-                            {savedDate}
-                          </span>
-                          {savedTime && (
-                            <span className="text-xs text-muted-foreground">at {savedTime}</span>
-                          )}
-                          {index === 0 && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Latest</span>
-                          )}
-                        </div>
-
-                        {profileSummaryItems.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {profileSummaryItems.map((item, i) => (
-                              <span key={i} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {snapshotEvents.length > 0 && (
-                          <div className="space-y-1 pt-1">
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                              Life Events ({snapshotEvents.length})
-                            </p>
-                            <div className="space-y-1">
-                              {snapshotEvents.map((ev, ei) => {
-                                const eventLabel = lifeEventOptions.find(o => o.value === ev.type)?.label || ev.type;
-                                return (
-                                  <div key={ei} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Calendar className="w-3 h-3 shrink-0" />
-                                    <span>{eventLabel}</span>
-                                    {ev.year && <span className="text-xs">({ev.year})</span>}
-                                    {ev.significance && (
-                                      <span className="text-xs text-primary/70">Impact: {ev.significance}/10</span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {profileSummaryItems.length === 0 && snapshotEvents.length === 0 && (
-                          <p className="text-sm text-muted-foreground italic">No profile details in this snapshot</p>
+                    <div key={entry.id || index} className="relative pl-6 border-l-2 border-primary/20 last:border-transparent" data-testid={`timeline-entry-${index}`}>
+                      <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px] top-1.5 ring-4 ring-background" />
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-semibold text-foreground" data-testid={`text-snapshot-date-${index}`}>
+                          {parsed.snapshot?.timestamp
+                            ? new Date(parsed.snapshot.timestamp).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                            : 'Unknown date'}
+                        </span>
+                        {index === 0 && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Latest</span>
                         )}
                       </div>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-1">
+                        {changes.map((change, i) => (
+                          <li key={i}>{change}</li>
+                        ))}
+                      </ul>
                     </div>
                   );
                 })}
