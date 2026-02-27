@@ -180,51 +180,44 @@ export default function ProfileTab() {
 
   useEffect(() => {
     async function fetchProfile() {
-      if (!user?.id || !supabase) {
+      if (!user?.id) {
         setLoadingProfile(false);
         return;
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+        const response = await fetch(`/api/profile/${user.id}`);
+        if (response.ok) {
+          const { profile: data, lifeEvents: eventsData } = await response.json();
 
-        if (!error && data) {
-          setProfile({
-            maritalStatus: data.marital_status || '',
-            childrenCount: data.children_count?.toString() || '',
-            youngestChildAge: data.youngest_child_age || '',
-            birthCountry: data.birth_country || '',
-            yearsInRegion: data.years_in_region || '',
-            culturalBackground: data.cultural_background || '',
-            profession: data.profession || '',
-            industry: data.industry || '',
-            educationLevel: data.education_level || '',
-            fieldOfStudy: data.field_of_study || '',
-            householdIncome: data.household_income || '',
-            parentalOccupation: data.parental_occupation || '',
-            parentalIncome: data.parental_income || '',
-          });
-        }
+          if (data) {
+            setProfile({
+              maritalStatus: data.marital_status || '',
+              childrenCount: data.children_count?.toString() || '',
+              youngestChildAge: data.youngest_child_age || '',
+              birthCountry: data.birth_country || '',
+              yearsInRegion: data.years_in_region || '',
+              culturalBackground: data.cultural_background || '',
+              profession: data.profession || '',
+              industry: data.industry || '',
+              educationLevel: data.education_level || '',
+              fieldOfStudy: data.field_of_study || '',
+              householdIncome: data.household_income || '',
+              parentalOccupation: data.parental_occupation || '',
+              parentalIncome: data.parental_income || '',
+            });
+          }
 
-        const { data: lifeEventsData } = await supabase
-          .from('life_events_log')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('year', { ascending: false });
-
-        if (lifeEventsData && lifeEventsData.length > 0) {
-          setLifeEvents({
-            events: lifeEventsData.map((e: { event_type: string; year: string; significance: number }) => ({
-              type: e.event_type || '',
-              year: e.year || '',
-              significance: e.significance || 5,
-            })),
-            otherEvent: '',
-          });
+          if (eventsData && eventsData.length > 0) {
+            setLifeEvents({
+              events: eventsData.map((e: { event_type: string; year: string; significance: number }) => ({
+                type: e.event_type || '',
+                year: e.year || '',
+                significance: e.significance || 5,
+              })),
+              otherEvent: '',
+            });
+          }
         }
       } catch (err) {
         console.log('Profile not found, will create on save');
@@ -234,7 +227,7 @@ export default function ProfileTab() {
     }
 
     fetchProfile();
-  }, [user?.id, supabase]);
+  }, [user?.id]);
 
   const handleSaveAccount = async () => {
     if (!user?.id || !supabase) return;
@@ -328,69 +321,22 @@ export default function ProfileTab() {
   };
 
   const handleSave = async () => {
-    if (!user?.id || !supabase) return;
+    if (!user?.id) return;
 
     setSaving(true);
     try {
-      const profileData = {
-        user_id: user.id,
-        marital_status: profile.maritalStatus || null,
-        children_count: profile.childrenCount ? parseInt(profile.childrenCount) : null,
-        youngest_child_age: profile.youngestChildAge || null,
-        birth_country: profile.birthCountry || null,
-        years_in_region: profile.yearsInRegion || null,
-        cultural_background: profile.culturalBackground || null,
-        profession: profile.profession || null,
-        industry: profile.industry || null,
-        education_level: profile.educationLevel || null,
-        field_of_study: profile.fieldOfStudy || null,
-        household_income: profile.householdIncome || null,
-        parental_occupation: profile.parentalOccupation || null,
-        parental_income: profile.parentalIncome || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from('user_profiles')
-        .upsert(profileData, { onConflict: 'user_id' });
-
-      if (error) throw error;
-
-      for (const event of lifeEvents.events) {
-        if (event.type && event.year) {
-          await supabase
-            .from('life_events_log')
-            .upsert({
-              user_id: user.id,
-              event_type: event.type,
-              year: event.year,
-              significance: event.significance,
-            }, { onConflict: 'user_id,event_type,year' });
-        }
-      }
-
-      const snapshot = {
-        profile: profileData,
-        lifeEvents: lifeEvents.events,
-        timestamp: new Date().toISOString(),
-      };
-
-      const historyResponse = await fetch('/api/profile-history', {
+      const response = await fetch(`/api/profile/${user.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
-          snapshot: snapshot,
+          profile,
+          lifeEvents: lifeEvents.events,
         }),
       });
 
-      if (!historyResponse.ok) {
-        console.error('Failed to save profile history snapshot');
-        toast({
-          title: 'Profile saved',
-          description: 'Your demographic information has been updated, but the history snapshot could not be recorded.',
-        });
-        return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save profile');
       }
 
       toast({

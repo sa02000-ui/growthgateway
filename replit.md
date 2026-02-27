@@ -6,7 +6,7 @@ A web application that helps users bridge the gap between self-perception, desir
 ## Tech Stack
 - **Frontend**: React + Vite, Shadcn UI, Tailwind CSS
 - **Backend**: Node.js (Express)
-- **Database**: External Supabase (PostgreSQL + Auth)
+- **Database**: External Supabase (PostgreSQL + Auth) + Replit PostgreSQL (user profiles, life events)
 - **Charts**: Recharts for radar charts
 
 ## Project Structure
@@ -39,6 +39,7 @@ server/
 ├── storage.ts           # Storage interface
 ├── ai-insights.ts       # AI-powered growth insights using OpenAI
 ├── feedback-tokens.ts   # Secure token generation for feedback URLs
+├── profile-routes.ts    # Profile CRUD (Replit PostgreSQL)
 └── replit_integrations/ # AI integration utilities
 ```
 
@@ -109,6 +110,9 @@ npm run dev
 - `POST /api/send-invite` - Send feedback invitation email (mock in dev)
 - `POST /api/share-result` - Generate shareable link token for assessment results
 - `GET /api/shared-result/:token` - Retrieve shared assessment results (public)
+- `GET /api/profile/:userId` - Get user profile and life events (Replit PostgreSQL)
+- `POST /api/profile/:userId` - Save/update user profile and life events (Replit PostgreSQL)
+- `DELETE /api/profile/:userId/event` - Delete a life event
 - `DELETE /api/user/me` - Delete user account and all associated data (authenticated)
 
 ## Database Tables

@@ -10,6 +10,7 @@ import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
+import { registerProfileRoutes } from "./profile-routes";
 import { calculateAssessmentScore, type QuestionData } from "@shared/scoring-engine";
 
 // Import all assessment seed data
@@ -50,6 +51,7 @@ export async function registerRoutes(
   registerFeedbackTokenRoutes(app);
   registerEmailRoutes(app);
   registerShareResultsRoutes(app);
+  registerProfileRoutes(app);
 
   // Supabase configuration endpoint for frontend
   app.get("/api/config", (_req, res) => {
@@ -958,42 +960,6 @@ export async function registerRoutes(
     }
   });
 
-  // Save profile history snapshot
-  app.post("/api/profile-history", async (req, res) => {
-    try {
-      const { userId, snapshot } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
-
-      if (!snapshot) {
-        return res.status(400).json({ error: "snapshot is required" });
-      }
-
-      const { data, error } = await supabase
-        .from('profile_history')
-        .insert({
-          user_id: userId,
-          snapshot: snapshot,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Profile history save error:', error);
-        return res.status(500).json({ 
-          error: "Failed to save profile history",
-          message: error.message
-        });
-      }
-
-      res.json({ success: true, historyId: data.id });
-    } catch (error) {
-      console.error('Profile history error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
 
   // DEBUG: Inject test data (temporary endpoint for testing)
   app.post("/api/debug/inject-test-data", async (req, res) => {
@@ -1312,10 +1278,15 @@ export async function registerRoutes(
       } catch (e) { console.log('[Account Deletion] No group_members to delete or error:', e); }
 
       try {
-        await supabase.from('user_profiles').delete().eq('user_id', userId);
+        const pg = await import('pg');
+        const pool = new pg.default.Pool({ connectionString: process.env.DATABASE_URL });
+        await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [userId]);
+        await pool.query('DELETE FROM life_events_log WHERE user_id = $1', [userId]);
+        await pool.query('DELETE FROM profile_history WHERE user_id = $1', [userId]);
+        await pool.end();
         deletionResults.user_profiles = true;
-        console.log('[Account Deletion] Deleted user_profiles entries');
-      } catch (e) { console.log('[Account Deletion] No user_profiles to delete or error:', e); }
+        console.log('[Account Deletion] Deleted user_profiles, life_events_log, profile_history entries');
+      } catch (e) { console.log('[Account Deletion] No profile data to delete or error:', e); }
 
       try {
         await supabase.from('shared_result_tokens').delete().eq('user_id', userId);
