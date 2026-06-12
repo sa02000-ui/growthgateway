@@ -36,3 +36,25 @@ policy is readable directly, bypassing Express. `feedback_tokens` had a public
 anon-read policy that must be dropped at the DB level — Express auth cannot
 protect against direct anon-key table reads. Always lock RLS on tables that hold
 mappings/PII, even though the server uses service role.
+
+# Supabase table inventory + direct browser reads
+
+Tables that actually EXIST in the external Supabase project: `results_log`,
+`peer_feedback`, `feedback_tokens`, `assessments_library`, `assessment_questions`.
+Tables referenced in code but NOT present in Supabase (return PGRST205/404 to the
+anon REST API): `groups`, `group_members`, `shared_result_tokens`,
+`conversations`, `messages`, `user_profiles`, `life_events`. Profile/life-event
+data lives in **Replit Postgres** (`DATABASE_URL`: `user_profiles`,
+`life_events_log`, `profile_history`), which is not reachable via the anon key.
+
+**Non-obvious:** the browser reads `results_log` and `peer_feedback` *directly*
+via the anon-key Supabase client carrying the logged-in user's session
+(home-tab.tsx, peer-feedback-tab.tsx), NOT through Express. So those two tables'
+RLS SELECT policies MUST stay owner-scoped (`auth.uid() = user_id` /
+`= target_user_id`) — the Express layer does not cover this path. All writes,
+however, go through Express via the service role, so no client write policies are
+needed. The lockdown DDL lives at `security/supabase_rls_lockdown.sql` (must be
+run by hand in the Supabase SQL editor; DDL can't run from the app env).
+**Why:** task-2 audit confirmed anon reads already return 0 rows on the sensitive
+tables, but anon INSERT into `peer_feedback` was still permitted until that SQL
+is applied.
