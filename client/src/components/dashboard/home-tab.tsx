@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users, Bug } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { apiRequest, queryClient, getAuthHeaders } from '@/lib/queryClient';
 import AIInsightCard from './ai-insight-card';
 import { 
   LineChart, 
@@ -233,7 +233,7 @@ export default function HomeTab() {
     async function fetchToken() {
       if (!user?.id) return;
       try {
-        const res = await fetch(`/api/my-feedback-token/${user.id}`);
+        const res = await fetch(`/api/my-feedback-token/${user.id}`, { headers: await getAuthHeaders() });
         if (res.ok) {
           const data = await res.json();
           setFeedbackToken(data.token);

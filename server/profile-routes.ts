@@ -1,25 +1,15 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import pg from "pg";
-import { supabase } from "./db";
+import { requireAuth, getUserId } from "./auth";
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-async function authenticateUser(req: Request): Promise<string | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return null;
-  return user.id;
-}
-
 export function registerProfileRoutes(app: Express) {
-  app.get("/api/profile/:userId", async (req, res) => {
+  app.get("/api/profile/:userId", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.params;
-      if (!userId) return res.status(400).json({ error: "userId required" });
+      const userId = getUserId(req);
 
       const profileResult = await pool.query(
         "SELECT * FROM user_profiles WHERE user_id = $1",
@@ -47,10 +37,9 @@ export function registerProfileRoutes(app: Express) {
     }
   });
 
-  app.post("/api/profile/:userId", async (req, res) => {
+  app.post("/api/profile/:userId", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.params;
-      if (!userId) return res.status(400).json({ error: "userId required" });
+      const userId = getUserId(req);
 
       const { profile, lifeEvents } = req.body;
 
@@ -121,12 +110,12 @@ export function registerProfileRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/profile/:userId/event", async (req, res) => {
+  app.delete("/api/profile/:userId/event", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = getUserId(req);
       const { eventType, year } = req.body;
-      if (!userId || !eventType || !year) {
-        return res.status(400).json({ error: "userId, eventType, and year required" });
+      if (!eventType || !year) {
+        return res.status(400).json({ error: "eventType and year required" });
       }
 
       await pool.query(

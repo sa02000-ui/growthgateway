@@ -2,9 +2,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { apiLimiter } from "./rate-limit";
 
 const app = express();
 const httpServer = createServer(app);
+
+app.set("trust proxy", 1);
 
 declare module "http" {
   interface IncomingMessage {
@@ -21,6 +24,8 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+app.use("/api", apiLimiter);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

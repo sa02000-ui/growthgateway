@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth-context';
+import { getAuthHeaders } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 const fieldExplanations = {
@@ -187,7 +188,7 @@ export default function ProfileTab() {
       }
 
       try {
-        const response = await fetch(`/api/profile/${user.id}`);
+        const response = await fetch(`/api/profile/${user.id}`, { headers: await getAuthHeaders() });
         if (response.ok) {
           const { profile: data, lifeEvents: eventsData, history: historyData } = await response.json();
           if (historyData) setProfileHistory(historyData);
@@ -329,7 +330,7 @@ export default function ProfileTab() {
     try {
       const response = await fetch(`/api/profile/${user.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({
           profile,
           lifeEvents: lifeEvents.events,

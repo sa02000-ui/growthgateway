@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { supabase } from "./db";
+import { requireAuth, getUserId } from "./auth";
 import crypto from "crypto";
 
 function generateToken(): string {
@@ -14,13 +15,9 @@ function generateToken(): string {
 }
 
 export function registerFeedbackTokenRoutes(app: Express): void {
-  app.post("/api/feedback-token/generate", async (req: Request, res: Response) => {
+  app.post("/api/feedback-token/generate", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { userId } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
+      const userId = getUserId(req);
 
       const { data: existing } = await supabase
         .from('feedback_tokens')
@@ -91,9 +88,9 @@ export function registerFeedbackTokenRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/my-feedback-token/:userId", async (req: Request, res: Response) => {
+  app.get("/api/my-feedback-token/:userId", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { userId } = req.params;
+      const userId = getUserId(req);
 
       let { data } = await supabase
         .from('feedback_tokens')

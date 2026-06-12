@@ -1,9 +1,29 @@
 import type { Express } from "express";
+import pg from "pg";
 import { supabase } from "./db";
-import crypto from 'crypto';
+import { requireAuth, getUserId } from "./auth";
 
-const shareTokenCache = new Map<string, { resultId: string; expiresAt: Date }>();
-const resultToTokenCache = new Map<string, string>();
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+let tableReady: Promise<void> | null = null;
+
+function ensureTable(): Promise<void> {
+  if (!tableReady) {
+    tableReady = pool
+      .query(
+        `CREATE TABLE IF NOT EXISTS shared_results (
+          token TEXT PRIMARY KEY,
+          result_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL
+        )`,
+      )
+      .then(() => undefined);
+  }
+  return tableReady;
+}
 
 function generateShareToken(): string {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -17,20 +37,14 @@ function generateShareToken(): string {
 }
 
 export function registerShareResultsRoutes(app: Express) {
-  app.post("/api/share-result", async (req, res) => {
+  app.post("/api/share-result", requireAuth, async (req, res) => {
     try {
-      const { resultId, userId } = req.body;
+      await ensureTable();
+      const userId = getUserId(req);
+      const { resultId } = req.body;
 
-      if (!resultId || !userId) {
-        return res.status(400).json({ error: "resultId and userId are required" });
-      }
-
-      if (resultToTokenCache.has(resultId)) {
-        const existingToken = resultToTokenCache.get(resultId)!;
-        const cached = shareTokenCache.get(existingToken);
-        if (cached && cached.expiresAt > new Date()) {
-          return res.json({ token: existingToken, expiresAt: cached.expiresAt });
-        }
+      if (!resultId) {
+        return res.status(400).json({ error: "resultId is required" });
       }
 
       const { data: result, error: resultError } = await supabase
@@ -47,11 +61,25 @@ export function registerShareResultsRoutes(app: Express) {
         return res.status(403).json({ error: "You can only share your own results" });
       }
 
-      const token = generateShareToken();
+      const existing = await pool.query(
+        "SELECT token, expires_at FROM shared_results WHERE result_id = $1 AND user_id = $2 AND expires_at > NOW()",
+        [resultId, userId],
+      );
+
+      if (existing.rows.length > 0) {
+        return res.json({
+          token: existing.rows[0].token,
+          expiresAt: existing.rows[0].expires_at,
+        });
+      }
+
+      const token = generateShareToken().toLowerCase();
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-      shareTokenCache.set(token.toLowerCase(), { resultId, expiresAt });
-      resultToTokenCache.set(resultId, token.toLowerCase());
+      await pool.query(
+        "INSERT INTO shared_results (token, result_id, user_id, expires_at) VALUES ($1, $2, $3, $4)",
+        [token, resultId, userId, expiresAt],
+      );
 
       res.json({ token, expiresAt });
     } catch (error) {
@@ -62,23 +90,29 @@ export function registerShareResultsRoutes(app: Express) {
 
   app.get("/api/shared-result/:token", async (req, res) => {
     try {
-      const { token } = req.params;
-      const normalizedToken = token.toLowerCase();
+      await ensureTable();
+      const normalizedToken = req.params.token.toLowerCase();
 
-      const cached = shareTokenCache.get(normalizedToken);
-      if (!cached) {
+      const tokenRow = await pool.query(
+        "SELECT result_id, expires_at FROM shared_results WHERE token = $1",
+        [normalizedToken],
+      );
+
+      if (tokenRow.rows.length === 0) {
         return res.status(404).json({ error: "Share link not found or expired" });
       }
 
-      if (cached.expiresAt < new Date()) {
-        shareTokenCache.delete(normalizedToken);
+      const { result_id: resultId, expires_at: expiresAt } = tokenRow.rows[0];
+
+      if (new Date(expiresAt) < new Date()) {
+        await pool.query("DELETE FROM shared_results WHERE token = $1", [normalizedToken]);
         return res.status(410).json({ error: "Share link has expired" });
       }
 
       const { data: result, error } = await supabase
         .from('results_log')
         .select('id, assessment_type, scores, completed_at')
-        .eq('id', cached.resultId)
+        .eq('id', resultId)
         .single();
 
       if (error || !result) {
@@ -91,7 +125,7 @@ export function registerShareResultsRoutes(app: Express) {
           scores: result.scores,
           completedAt: result.completed_at,
         },
-        expiresAt: cached.expiresAt,
+        expiresAt,
       });
     } catch (error) {
       console.error('Get shared result error:', error);

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Sparkles, RefreshCw, Loader2, Brain, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { getAuthHeaders } from '@/lib/queryClient';
 
 interface AIInsightData {
   insight: string;
@@ -24,7 +25,7 @@ export default function AIInsightCard() {
     setError(null);
     
     try {
-      const res = await fetch(`/api/ai-insights/${user.id}`);
+      const res = await fetch(`/api/ai-insights/${user.id}`, { headers: await getAuthHeaders() });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to load insight');

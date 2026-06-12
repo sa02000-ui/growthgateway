@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UsersRound, Plus, Settings, Users, Building2, Home, Lock, Eye, EyeOff, Mail, Trash2, X, Shield, Share2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
+import { getAuthHeaders } from '@/lib/queryClient';
 
 interface GroupMember {
   id: string;
@@ -73,7 +74,7 @@ export default function FamilyTeamsTab() {
       }
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/groups/${user.id}`);
+        const response = await fetch(`/api/groups/${user.id}`, { headers: await getAuthHeaders() });
         if (response.ok) {
           const data = await response.json();
           const mappedGroups = (data.groups || []).map((g: any) => ({

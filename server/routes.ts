@@ -12,6 +12,8 @@ import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
 import { registerProfileRoutes } from "./profile-routes";
 import { calculateAssessmentScore, type QuestionData } from "@shared/scoring-engine";
+import { requireAuth, getUserId } from "./auth";
+import { writeLimiter } from "./rate-limit";
 
 // Import all assessment seed data
 import { IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3 } from "@shared/assessments/category-one-seed";
@@ -42,6 +44,16 @@ const ASSESSMENTS_SEED_DATA = [
   { category: "How I Feel", name: "Brief Resilience Scale", popular_equivalent: "Bounce-Back Factor", scientific_reference: "Smith et al. (2008)", description: "Measures the ability to bounce back or recover from stress and adversity.", question_count: 6, estimated_time: "2 mins" },
   { category: "How I Feel", name: "Flourishing Scale", popular_equivalent: "Well-being Index", scientific_reference: "Diener (2009)", description: "Measures self-perceived success in relationships, self-esteem, purpose, and optimism.", question_count: 8, estimated_time: "2-3 mins" },
 ];
+
+async function userOwnsGroup(groupId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('groups')
+    .select('created_by')
+    .eq('id', groupId)
+    .single();
+  if (error || !data) return false;
+  return data.created_by === userId;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -149,6 +161,9 @@ export async function registerRoutes(
   // Seed assessments library and questions (comprehensive seed)
   app.post("/api/assessments-library/seed", async (_req, res) => {
     try {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(404).json({ error: "Not found" });
+      }
       console.log('[Seed] Starting comprehensive database seed...');
       
       // Check if questions already seeded
@@ -623,13 +638,10 @@ export async function registerRoutes(
   });
 
   // Submit assessment responses and get scores
-  app.post("/api/assessment/submit", async (req, res) => {
+  app.post("/api/assessment/submit", requireAuth, async (req, res) => {
     try {
-      const { userId, responses } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
+      const userId = getUserId(req);
+      const { responses } = req.body;
 
       const parsedResponses = assessmentResponsesSchema.safeParse(responses);
       if (!parsedResponses.success) {
@@ -693,14 +705,11 @@ export async function registerRoutes(
   });
 
   // Submit any assessment - generic endpoint using ID
-  app.post("/api/assessments/:id/submit", async (req, res) => {
+  app.post("/api/assessments/:id/submit", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const { userId, responses } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
+      const userId = getUserId(req);
+      const { responses } = req.body;
 
       // Try static data first
       let assessment: Record<string, unknown> | null = null;
@@ -835,9 +844,9 @@ export async function registerRoutes(
   });
 
   // Get user's assessment history
-  app.get("/api/assessment/results/:userId", async (req, res) => {
+  app.get("/api/assessment/results/:userId", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = getUserId(req);
 
       const { data, error } = await supabase
         .from('results_log')
@@ -858,9 +867,10 @@ export async function registerRoutes(
   });
 
   // Get single assessment result
-  app.get("/api/assessment/result/:resultId", async (req, res) => {
+  app.get("/api/assessment/result/:resultId", requireAuth, async (req, res) => {
     try {
       const { resultId } = req.params;
+      const userId = getUserId(req);
 
       const { data, error } = await supabase
         .from('results_log')
@@ -871,6 +881,10 @@ export async function registerRoutes(
       if (error) {
         console.error('Supabase query error:', error);
         return res.status(404).json({ error: "Assessment result not found" });
+      }
+
+      if (data.user_id !== userId) {
+        return res.status(403).json({ error: "You can only view your own results" });
       }
 
       res.json({ result: data });
@@ -910,7 +924,7 @@ export async function registerRoutes(
   });
 
   // Submit peer feedback (public)
-  app.post("/api/peer-feedback/:userId", async (req, res) => {
+  app.post("/api/peer-feedback/:userId", writeLimiter, async (req, res) => {
     try {
       const { userId } = req.params;
       const { responses, peerName, isAnonymous } = req.body;
@@ -964,9 +978,9 @@ export async function registerRoutes(
   });
 
   // Get all peer feedback for a user (authenticated)
-  app.get("/api/peer-feedback/:userId", async (req, res) => {
+  app.get("/api/peer-feedback/:userId", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = getUserId(req);
 
       const { data, error } = await supabase
         .from('peer_feedback')
@@ -1009,6 +1023,9 @@ export async function registerRoutes(
   // DEBUG: Inject test data (temporary endpoint for testing)
   app.post("/api/debug/inject-test-data", async (req, res) => {
     try {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(404).json({ error: "Not found" });
+      }
       const { userId, accessToken } = req.body;
 
       if (!userId || !accessToken) {
@@ -1086,12 +1103,13 @@ export async function registerRoutes(
   // ==================== GROUP ENDPOINTS ====================
 
   // Create a new group
-  app.post("/api/groups", async (req, res) => {
+  app.post("/api/groups", requireAuth, async (req, res) => {
     try {
-      const { name, type, privacyLevel, createdBy } = req.body;
+      const createdBy = getUserId(req);
+      const { name, type, privacyLevel } = req.body;
 
-      if (!name || !createdBy) {
-        return res.status(400).json({ error: "name and createdBy are required" });
+      if (!name) {
+        return res.status(400).json({ error: "name is required" });
       }
 
       const { data, error } = await supabase
@@ -1118,9 +1136,9 @@ export async function registerRoutes(
   });
 
   // List groups for a user
-  app.get("/api/groups/:userId", async (req, res) => {
+  app.get("/api/groups/:userId", requireAuth, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = getUserId(req);
 
       const { data: ownedGroups, error: ownedError } = await supabase
         .from('groups')
@@ -1168,13 +1186,17 @@ export async function registerRoutes(
   });
 
   // Add member to a group
-  app.post("/api/groups/:groupId/members", async (req, res) => {
+  app.post("/api/groups/:groupId/members", requireAuth, async (req, res) => {
     try {
       const { groupId } = req.params;
       const { email, name, role, userId } = req.body;
 
       if (!email && !userId) {
         return res.status(400).json({ error: "email or userId is required" });
+      }
+
+      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
+        return res.status(403).json({ error: "You do not have access to this group" });
       }
 
       const { data, error } = await supabase
@@ -1202,9 +1224,13 @@ export async function registerRoutes(
   });
 
   // Get members of a group
-  app.get("/api/groups/:groupId/members", async (req, res) => {
+  app.get("/api/groups/:groupId/members", requireAuth, async (req, res) => {
     try {
       const { groupId } = req.params;
+
+      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
+        return res.status(403).json({ error: "You do not have access to this group" });
+      }
 
       const { data, error } = await supabase
         .from('group_members')
@@ -1224,9 +1250,13 @@ export async function registerRoutes(
   });
 
   // Remove member from a group
-  app.delete("/api/groups/:groupId/members/:memberId", async (req, res) => {
+  app.delete("/api/groups/:groupId/members/:memberId", requireAuth, async (req, res) => {
     try {
       const { groupId, memberId } = req.params;
+
+      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
+        return res.status(403).json({ error: "You do not have access to this group" });
+      }
 
       const { error } = await supabase
         .from('group_members')
@@ -1247,9 +1277,13 @@ export async function registerRoutes(
   });
 
   // Delete a group
-  app.delete("/api/groups/:groupId", async (req, res) => {
+  app.delete("/api/groups/:groupId", requireAuth, async (req, res) => {
     try {
       const { groupId } = req.params;
+
+      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
+        return res.status(403).json({ error: "You do not have access to this group" });
+      }
 
       await supabase.from('group_members').delete().eq('group_id', groupId);
 
@@ -1271,22 +1305,9 @@ export async function registerRoutes(
   });
 
   // Delete user account (Right to be Forgotten)
-  app.delete("/api/user/me", async (req, res) => {
+  app.delete("/api/user/me", requireAuth, async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader) {
-        return res.status(401).json({ error: "Authorization required" });
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      
-      if (authError || !user) {
-        return res.status(401).json({ error: "Invalid or expired session" });
-      }
-
-      const userId = user.id;
+      const userId = getUserId(req);
       console.log(`[Account Deletion] Starting deletion for user: ${userId}`);
 
       const deletionResults = {
@@ -1328,6 +1349,7 @@ export async function registerRoutes(
         await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [userId]);
         await pool.query('DELETE FROM life_events_log WHERE user_id = $1', [userId]);
         await pool.query('DELETE FROM profile_history WHERE user_id = $1', [userId]);
+        await pool.query('DELETE FROM shared_results WHERE user_id = $1', [userId]).catch(() => {});
         await pool.end();
         deletionResults.user_profiles = true;
         console.log('[Account Deletion] Deleted user_profiles, life_events_log, profile_history entries');
@@ -1339,12 +1361,28 @@ export async function registerRoutes(
         console.log('[Account Deletion] Deleted shared_result_tokens entries');
       } catch (e) { console.log('[Account Deletion] No shared_result_tokens to delete or error:', e); }
 
+      // Right to be Forgotten: delete the Supabase auth user (requires service role)
+      let authUserDeleted = false;
+      try {
+        const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
+        if (authDeleteError) {
+          console.error('[Account Deletion] Failed to delete auth user:', authDeleteError.message);
+        } else {
+          authUserDeleted = true;
+          console.log('[Account Deletion] Deleted Supabase auth user');
+        }
+      } catch (e) {
+        console.error('[Account Deletion] Auth user deletion error:', e);
+      }
+
       console.log(`[Account Deletion] Data deletion complete for user: ${userId}`, deletionResults);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: "All your data has been permanently deleted. Please sign out to complete the process.",
-        note: "Your login credentials have been invalidated."
+        note: authUserDeleted
+          ? "Your account and login credentials have been permanently removed."
+          : "Your data was removed, but the login record could not be fully deleted. Please contact support if you can still sign in.",
       });
     } catch (error) {
       console.error('Account deletion error:', error);

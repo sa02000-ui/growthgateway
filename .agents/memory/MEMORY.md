@@ -1,0 +1,1 @@
+- [Auth & authorization model](auth-model.md) — Express routes use Supabase service_role (bypasses RLS); requireAuth + getUserId is the only authz layer, never trust client IDs; anon-readable tables still need RLS.

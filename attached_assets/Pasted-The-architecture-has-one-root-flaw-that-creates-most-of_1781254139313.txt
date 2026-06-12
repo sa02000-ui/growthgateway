@@ -1,0 +1,13 @@
+The architecture has one root flaw that creates most of the risk: your Express backend connects to Supabase with the service_role key (which bypasses Row Level Security entirely), and almost every API route trusts a userId or resultId passed in the URL/body without checking who's actually calling. So the RLS policies you have — which are actually fine — protect nothing on the real data path.
+
+The practical consequence: an anonymous person on the internet can read, write, and delete other users' data just by changing an ID in the request. For example, GET /api/assessment/results/<anyone's-id> returns that person's full assessment history and raw answers. Same pattern for AI insights, peer feedback, and profile read/write/delete.
+
+A telling detail: server/profile-routes.ts actually defines an authenticateUser() function that would fix this — but none of the handlers ever call it. The protection was written and left unplugged.
+
+The three things to fix first
+Add a real auth check to every route — read the Bearer token, call supabase.auth.getUser(token), and use that user's ID instead of the one from the URL. This is one middleware and it closes most of the exposure.
+Confirm the key shipped to the browser is the anon key, not the service key. /api/config sends SUPABASE_KEY to the frontend, and the backend falls back to that same var if SUPABASE_SERVICE_ROLE_KEY isn't set. If SUPABASE_KEY in Replit Secrets is accidentally the service key, your whole database is publicly open. Quick check, catastrophic if wrong.
+Lock down feedback_tokens. It currently has a public-read policy (anon, USING (true)), so anyone can dump every token→user mapping and enumerate all your users. Drop that policy.
+Beyond those: no rate limiting anywhere (including the paid OpenAI endpoint, which can be hammered for arbitrary users), a debug data-injection route left mounted in prod, and account deletion that doesn't actually delete the Supabase auth user despite telling the user it did. I also found a few broken features — the groups/Family-&-Teams routes query tables that don't exist in your Supabase schema, and share-links are stored only in memory so they die on every redeploy. All detailed with severities in the file.
+
+What's good: no secrets committed to git, RLS is at least enabled on all tables, and the share-result endpoint is the one place ownership is correctly checked.

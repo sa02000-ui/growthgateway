@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Users, Copy, CheckCircle2, Clock, Shield, Eye, EyeOff, Loader2, Mail, Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
+import { getAuthHeaders } from '@/lib/queryClient';
 
 const PRIVACY_THRESHOLD = 3;
 
@@ -42,7 +43,7 @@ export default function PeerFeedbackTab() {
     async function fetchToken() {
       if (!user?.id) return;
       try {
-        const res = await fetch(`/api/my-feedback-token/${user.id}`);
+        const res = await fetch(`/api/my-feedback-token/${user.id}`, { headers: await getAuthHeaders() });
         if (res.ok) {
           const data = await res.json();
           setFeedbackToken(data.token);

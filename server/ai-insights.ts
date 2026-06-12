@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import type { Express, Request, Response } from "express";
 import { supabase } from "./db";
+import { requireAuth, getUserId } from "./auth";
+import { aiLimiter } from "./rate-limit";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -30,13 +32,9 @@ interface TraitScores {
 }
 
 export function registerAIInsightsRoutes(app: Express): void {
-  app.get("/api/ai-insights/:userId", async (req: Request, res: Response) => {
+  app.get("/api/ai-insights/:userId", aiLimiter, requireAuth, async (req: Request, res: Response) => {
     try {
-      const { userId } = req.params;
-
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
+      const userId = getUserId(req);
 
       const { data: latestResult, error: resultError } = await supabase
         .from('results_log')
