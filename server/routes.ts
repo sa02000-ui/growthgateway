@@ -780,6 +780,17 @@ export async function registerRoutes(
         inputType: (q.inputType as string) || inputType,
       }));
 
+      const missingQuestions = typedQuestions
+        .map(q => q.questionNumber)
+        .filter(questionNumber => responses[String(questionNumber)] === undefined);
+
+      if (missingQuestions.length > 0) {
+        return res.status(400).json({
+          error: "Incomplete assessment",
+          details: missingQuestions.map(questionNumber => `Missing response for question ${questionNumber}`),
+        });
+      }
+
       const config = {
         slug: slug,
         scoringAlgorithm: (assessment.scoring_algorithm as "average" | "summation" | "complex_centering" | "binary_correct" | "multi_category") || 'average',
