@@ -4,6 +4,7 @@ import pg from "pg";
 import { supabase } from "./db";
 import { requireAuth, getUserId } from "./auth";
 import { aiLimiter } from "./rate-limit";
+import { assessmentScoresSchema } from "@shared/schema";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -53,7 +54,7 @@ export function registerAIInsightsRoutes(app: Express): void {
         return res.status(404).json({ error: "No assessment results found" });
       }
 
-      const selfScores = latestResult.scores as TraitScores;
+      const selfScores = assessmentScoresSchema.parse(latestResult.scores) as unknown as TraitScores;
 
       const { data: peerFeedback, error: peerError } = await supabase
         .from('peer_feedback')
@@ -68,7 +69,7 @@ export function registerAIInsightsRoutes(app: Express): void {
         const traits: (keyof TraitScores)[] = ['N', 'E', 'O', 'A', 'C'];
         
         validPeerFeedback.forEach(fb => {
-          const scores = fb.scores as TraitScores;
+          const scores = assessmentScoresSchema.parse(fb.scores);
           traits.forEach(trait => {
             avgScores[trait] += scores[trait] || 0;
           });

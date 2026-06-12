@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { supabase } from "./db";
 import { calculateAllTraitScores, validateResponses } from "@shared/scoring";
-import { assessmentResponsesSchema, traitScoresSchema } from "@shared/schema";
+import { assessmentResponsesSchema, traitScoresSchema, engineResponsesSchema, assessmentScoresSchema } from "@shared/schema";
 import { questions } from "@shared/ipip-neo-120";
 import { peerQuestions, calculatePeerScores } from "@shared/peer-feedback-questions";
 import { registerAIInsightsRoutes } from "./ai-insights";
@@ -699,7 +699,15 @@ export async function registerRoutes(
     try {
       const { id } = req.params;
       const userId = getUserId(req);
-      const { responses } = req.body;
+
+      const parsedResponses = engineResponsesSchema.safeParse(req.body.responses);
+      if (!parsedResponses.success) {
+        return res.status(400).json({
+          error: "Invalid responses format",
+          details: parsedResponses.error.errors,
+        });
+      }
+      const responses = parsedResponses.data;
 
       // Try static data first
       let assessment: Record<string, unknown> | null = null;
@@ -783,10 +791,12 @@ export async function registerRoutes(
 
       const result = calculateAssessmentScore(config, responses);
 
-      const scoresObject = result.traitScores.reduce((acc, ts) => {
-        acc[ts.key] = ts.score;
-        return acc;
-      }, {} as Record<string, number>);
+      const scoresObject = assessmentScoresSchema.parse(
+        result.traitScores.reduce((acc, ts) => {
+          acc[ts.key] = ts.score;
+          return acc;
+        }, {} as Record<string, number>)
+      );
 
       const assessmentName = assessment.name as string;
       const assessmentCategory = assessment.category as string;
@@ -991,7 +1001,7 @@ export async function registerRoutes(
         
         for (const trait of traits) {
           const sum = data.reduce((acc, fb) => {
-            const scores = fb.scores as Record<string, number>;
+            const scores = assessmentScoresSchema.parse(fb.scores);
             return acc + (scores[trait] || 0);
           }, 0);
           averageScores[trait] = sum / data.length;

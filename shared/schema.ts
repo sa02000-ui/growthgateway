@@ -383,6 +383,17 @@ export type TraitConfig = z.infer<typeof traitConfigSchema>;
 export const assessmentResponsesSchema = z.record(z.string(), z.coerce.number());
 export type AssessmentResponses = z.infer<typeof assessmentResponsesSchema>;
 
+// The generic scoring engine accepts mixed number/string answers (string for
+// multiple-choice tests like ICAR-16, number for Likert scales). This schema
+// validates that boundary without coercing strings to numbers, and requires at
+// least one answer so empty/missing submissions are rejected.
+export const engineResponsesSchema = z
+  .record(z.string(), z.union([z.number(), z.string()]))
+  .refine((r) => Object.keys(r).length > 0, {
+    message: "At least one response is required",
+  });
+export type EngineResponses = z.infer<typeof engineResponsesSchema>;
+
 // Result scores keyed by trait/category key. Covers both the fixed Big-Five traits
 // (N/E/O/A/C) and dynamic multi-category assessments (RIASEC, TEIQue, etc.).
 export const assessmentScoresSchema = z.record(z.string(), z.number());
