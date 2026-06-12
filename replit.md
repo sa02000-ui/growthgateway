@@ -17,8 +17,7 @@ client/src/
 │   │   ├── home-tab.tsx           # Perspective Alignment radar chart
 │   │   ├── assessments-tab.tsx    # My Assessments page
 │   │   ├── peer-feedback-tab.tsx  # Peer Feedback page
-│   │   ├── profile-tab.tsx        # My Profile page (demographics + life events)
-│   │   └── family-teams-tab.tsx   # Family & Teams page
+│   │   └── profile-tab.tsx        # My Profile page (demographics + life events)
 │   └── ui/              # Shadcn UI components
 ├── lib/
 │   ├── supabase.ts      # Supabase client initialization
@@ -128,6 +127,8 @@ npm run dev
 - **multi_category**: Scores across multiple independent categories (RIASEC, TEIQue-SF)
 
 ## Recent Changes
+- 2026-06-12: Removed the non-functional Groups / Family & Teams feature (UI tab, dead /api/groups* routes querying non-existent Supabase tables, and groups/group_members schema). Cleaned account deletion of dead group_members and shared_result_tokens references.
+- 2026-06-12: Fixed AI insights to read profile (user_profiles) and life events (life_events_log) from Replit Postgres instead of non-existent Supabase tables, so demographic/life-event context is actually used.
 - 2025-01-02: Phase 14 Identity & Privacy Layer complete
   - Added Forgot Password flow (/forgot-password page with Supabase resetPasswordForEmail)
   - Added Delete Account feature in Profile (Danger Zone with confirmation dialog)

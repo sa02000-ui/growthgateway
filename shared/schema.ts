@@ -297,60 +297,6 @@ export const feedbackTokens = pgTable("feedback_tokens", {
 
 export type FeedbackToken = typeof feedbackTokens.$inferSelect;
 
-export const groups = pgTable("groups", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  type: varchar("type").notNull().default('team'),
-  privacyLevel: varchar("privacy_level").notNull().default('anonymous'),
-  createdBy: varchar("created_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const insertGroupSchema = createInsertSchema(groups).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertGroup = z.infer<typeof insertGroupSchema>;
-export type Group = typeof groups.$inferSelect;
-
-export const groupMembers = pgTable("group_members", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  groupId: varchar("group_id").notNull(),
-  userId: varchar("user_id"),
-  email: varchar("email"),
-  name: varchar("name"),
-  role: varchar("role").notNull().default('member'),
-  joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
-
-export const insertGroupMemberSchema = createInsertSchema(groupMembers).omit({
-  id: true,
-  joinedAt: true,
-});
-
-export type InsertGroupMember = z.infer<typeof insertGroupMemberSchema>;
-export type GroupMember = typeof groupMembers.$inferSelect;
-
-export const groupTypeOptions = [
-  { value: 'family', label: 'Family' },
-  { value: 'team', label: 'Team' },
-  { value: 'work', label: 'Work' },
-  { value: 'friends', label: 'Friends' },
-];
-
-export const groupPrivacyOptions = [
-  { value: 'open', label: 'Open (Members can see each other)' },
-  { value: 'anonymous', label: 'Anonymous (Members hidden until threshold)' },
-];
-
-export const groupRoleOptions = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'member', label: 'Member' },
-];
-
 export const profileHistory = pgTable("profile_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),

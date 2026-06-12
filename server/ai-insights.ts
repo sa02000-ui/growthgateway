@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { Express, Request, Response } from "express";
+import pg from "pg";
 import { supabase } from "./db";
 import { requireAuth, getUserId } from "./auth";
 import { aiLimiter } from "./rate-limit";
@@ -7,6 +8,10 @@ import { aiLimiter } from "./rate-limit";
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
 });
 
 const SYSTEM_PROMPT = `You are a Senior Industrial-Organizational Psychologist specializing in personality assessment and personal development. You analyze personality data from the Big Five (OCEAN) model to provide growth insights.
@@ -76,21 +81,23 @@ export function registerAIInsightsRoutes(app: Express): void {
         peerScores = avgScores;
       }
 
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
+      let profile: Record<string, any> | null = null;
+      let lifeEvents: { event_type: string; year: number; significance: number }[] = [];
+      try {
+        const profileResult = await pool.query(
+          "SELECT * FROM user_profiles WHERE user_id = $1 LIMIT 1",
+          [userId]
+        );
+        profile = profileResult.rows[0] || null;
 
-      const { data: lifeEvents } = await supabase
-        .from('life_events')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        const eventsResult = await pool.query(
+          "SELECT event_type, year, significance FROM life_events_log WHERE user_id = $1 ORDER BY year DESC LIMIT 5",
+          [userId]
+        );
+        lifeEvents = eventsResult.rows;
+      } catch (e) {
+        console.error("AI Insights profile/life-events fetch error:", e);
+      }
 
       const traitNames: Record<keyof TraitScores, string> = {
         N: 'Neuroticism',
@@ -130,23 +137,15 @@ ${contextItems.join('\n')}`;
         }
       }
 
-      if (lifeEvents) {
-        const recentEvents = [];
-        if (lifeEvents.new_job) recentEvents.push('Career change');
-        if (lifeEvents.relocation) recentEvents.push('Relocation');
-        if (lifeEvents.marriage) recentEvents.push('Marriage/Partnership');
-        if (lifeEvents.divorce) recentEvents.push('Divorce/Separation');
-        if (lifeEvents.loss_of_loved_one) recentEvents.push('Loss of loved one');
-        if (lifeEvents.new_child) recentEvents.push('New child');
-        if (lifeEvents.health_change) recentEvents.push('Health change');
-        if (lifeEvents.retirement) recentEvents.push('Retirement');
-        
-        if (recentEvents.length > 0) {
-          analysisPrompt += `
+      if (lifeEvents.length > 0) {
+        const recentEvents = lifeEvents.map(
+          (e) => `${e.event_type} (${e.year})`
+        );
 
-RECENT LIFE EVENTS (past 12 months):
+        analysisPrompt += `
+
+RECENT LIFE EVENTS (most recent first):
 ${recentEvents.join(', ')}`;
-        }
       }
 
       analysisPrompt += `

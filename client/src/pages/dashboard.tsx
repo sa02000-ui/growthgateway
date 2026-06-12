@@ -30,7 +30,7 @@ import {
 
 } from '@/components/ui/sidebar';
 
-import { Home, Users, UsersRound, LogOut, Leaf, UserCircle, Compass } from 'lucide-react';
+import { Home, Users, LogOut, Leaf, UserCircle, Compass } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
@@ -41,8 +41,6 @@ import HomeTab from '@/components/dashboard/home-tab';
 import ExploreAssessmentsTab from '@/components/dashboard/explore-assessments-tab';
 
 import PeerFeedbackTab from '@/components/dashboard/peer-feedback-tab';
-
-import FamilyTeamsTab from '@/components/dashboard/family-teams-tab';
 
 import ProfileTab from '@/components/dashboard/profile-tab';
 
@@ -57,8 +55,6 @@ const navItems = [
   { title: 'Explore Assessments', icon: Compass, href: '/dashboard/explore' },
 
   { title: 'Peer Feedback', icon: Users, href: '/dashboard/feedback' },
-
-  { title: 'Family & Teams', icon: UsersRound, href: '/dashboard/teams' },
 
   { title: 'My Profile', icon: UserCircle, href: '/dashboard/profile' },
 
@@ -317,8 +313,6 @@ export default function Dashboard() {
                     <Route path="/dashboard/explore" component={ExploreAssessmentsTab} />
 
                     <Route path="/dashboard/feedback" component={PeerFeedbackTab} />
-
-                    <Route path="/dashboard/teams" component={FamilyTeamsTab} />
 
                     <Route path="/dashboard/profile" component={ProfileTab} />
 

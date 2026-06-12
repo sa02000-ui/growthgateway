@@ -45,16 +45,6 @@ const ASSESSMENTS_SEED_DATA = [
   { category: "How I Feel", name: "Flourishing Scale", popular_equivalent: "Well-being Index", scientific_reference: "Diener (2009)", description: "Measures self-perceived success in relationships, self-esteem, purpose, and optimism.", question_count: 8, estimated_time: "2-3 mins" },
 ];
 
-async function userOwnsGroup(groupId: string, userId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('groups')
-    .select('created_by')
-    .eq('id', groupId)
-    .single();
-  if (error || !data) return false;
-  return data.created_by === userId;
-}
-
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -1100,210 +1090,6 @@ export async function registerRoutes(
     }
   });
 
-  // ==================== GROUP ENDPOINTS ====================
-
-  // Create a new group
-  app.post("/api/groups", requireAuth, async (req, res) => {
-    try {
-      const createdBy = getUserId(req);
-      const { name, type, privacyLevel } = req.body;
-
-      if (!name) {
-        return res.status(400).json({ error: "name is required" });
-      }
-
-      const { data, error } = await supabase
-        .from('groups')
-        .insert({
-          name,
-          type: type || 'team',
-          privacy_level: privacyLevel || 'anonymous',
-          created_by: createdBy,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Group creation error:', error);
-        return res.status(500).json({ error: "Failed to create group", details: error.message });
-      }
-
-      res.json({ success: true, group: data });
-    } catch (error) {
-      console.error('Group creation error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // List groups for a user
-  app.get("/api/groups/:userId", requireAuth, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-
-      const { data: ownedGroups, error: ownedError } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('created_by', userId);
-
-      if (ownedError) {
-        console.error('Groups fetch error:', ownedError);
-        return res.status(500).json({ error: "Failed to fetch groups" });
-      }
-
-      const { data: memberGroups, error: memberError } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', userId);
-
-      if (memberError) {
-        console.error('Group members fetch error:', memberError);
-      }
-
-      const memberGroupIds = memberGroups?.map(m => m.group_id) || [];
-      
-      let allGroups = ownedGroups || [];
-      if (memberGroupIds.length > 0) {
-        const { data: additionalGroups } = await supabase
-          .from('groups')
-          .select('*')
-          .in('id', memberGroupIds);
-        
-        if (additionalGroups) {
-          const existingIds = new Set(allGroups.map(g => g.id));
-          additionalGroups.forEach(g => {
-            if (!existingIds.has(g.id)) {
-              allGroups.push(g);
-            }
-          });
-        }
-      }
-
-      res.json({ groups: allGroups });
-    } catch (error) {
-      console.error('Groups fetch error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // Add member to a group
-  app.post("/api/groups/:groupId/members", requireAuth, async (req, res) => {
-    try {
-      const { groupId } = req.params;
-      const { email, name, role, userId } = req.body;
-
-      if (!email && !userId) {
-        return res.status(400).json({ error: "email or userId is required" });
-      }
-
-      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
-        return res.status(403).json({ error: "You do not have access to this group" });
-      }
-
-      const { data, error } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: groupId,
-          user_id: userId || null,
-          email: email || null,
-          name: name || null,
-          role: role || 'member',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Add member error:', error);
-        return res.status(500).json({ error: "Failed to add member", details: error.message });
-      }
-
-      res.json({ success: true, member: data });
-    } catch (error) {
-      console.error('Add member error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // Get members of a group
-  app.get("/api/groups/:groupId/members", requireAuth, async (req, res) => {
-    try {
-      const { groupId } = req.params;
-
-      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
-        return res.status(403).json({ error: "You do not have access to this group" });
-      }
-
-      const { data, error } = await supabase
-        .from('group_members')
-        .select('*')
-        .eq('group_id', groupId);
-
-      if (error) {
-        console.error('Group members fetch error:', error);
-        return res.status(500).json({ error: "Failed to fetch group members" });
-      }
-
-      res.json({ members: data });
-    } catch (error) {
-      console.error('Group members fetch error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // Remove member from a group
-  app.delete("/api/groups/:groupId/members/:memberId", requireAuth, async (req, res) => {
-    try {
-      const { groupId, memberId } = req.params;
-
-      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
-        return res.status(403).json({ error: "You do not have access to this group" });
-      }
-
-      const { error } = await supabase
-        .from('group_members')
-        .delete()
-        .eq('id', memberId)
-        .eq('group_id', groupId);
-
-      if (error) {
-        console.error('Remove member error:', error);
-        return res.status(500).json({ error: "Failed to remove member" });
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Remove member error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // Delete a group
-  app.delete("/api/groups/:groupId", requireAuth, async (req, res) => {
-    try {
-      const { groupId } = req.params;
-
-      if (!(await userOwnsGroup(groupId, getUserId(req)))) {
-        return res.status(403).json({ error: "You do not have access to this group" });
-      }
-
-      await supabase.from('group_members').delete().eq('group_id', groupId);
-
-      const { error } = await supabase
-        .from('groups')
-        .delete()
-        .eq('id', groupId);
-
-      if (error) {
-        console.error('Delete group error:', error);
-        return res.status(500).json({ error: "Failed to delete group" });
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Delete group error:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
   // Delete user account (Right to be Forgotten)
   app.delete("/api/user/me", requireAuth, async (req, res) => {
     try {
@@ -1314,9 +1100,7 @@ export async function registerRoutes(
         results_log: false,
         peer_feedback: false,
         feedback_tokens: false,
-        group_members: false,
         user_profiles: false,
-        shared_result_tokens: false,
       };
 
       try {
@@ -1338,12 +1122,6 @@ export async function registerRoutes(
       } catch (e) { console.log('[Account Deletion] No feedback_tokens to delete or error:', e); }
 
       try {
-        await supabase.from('group_members').delete().eq('user_id', userId);
-        deletionResults.group_members = true;
-        console.log('[Account Deletion] Deleted group_members entries');
-      } catch (e) { console.log('[Account Deletion] No group_members to delete or error:', e); }
-
-      try {
         const pg = await import('pg');
         const pool = new pg.default.Pool({ connectionString: process.env.DATABASE_URL });
         await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [userId]);
@@ -1354,12 +1132,6 @@ export async function registerRoutes(
         deletionResults.user_profiles = true;
         console.log('[Account Deletion] Deleted user_profiles, life_events_log, profile_history entries');
       } catch (e) { console.log('[Account Deletion] No profile data to delete or error:', e); }
-
-      try {
-        await supabase.from('shared_result_tokens').delete().eq('user_id', userId);
-        deletionResults.shared_result_tokens = true;
-        console.log('[Account Deletion] Deleted shared_result_tokens entries');
-      } catch (e) { console.log('[Account Deletion] No shared_result_tokens to delete or error:', e); }
 
       // Right to be Forgotten: delete the Supabase auth user (requires service role)
       let authUserDeleted = false;
