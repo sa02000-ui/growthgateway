@@ -874,7 +874,7 @@ export default function ExploreAssessmentsTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {result.scores && typeof result.scores === 'object' && (() => {
+                  {!!result.scores && typeof result.scores === 'object' && (() => {
                     const scoresObj = result.scores as Record<string, number>;
                     const scoreEntries = Object.entries(scoresObj).slice(0, 5);
                     return (

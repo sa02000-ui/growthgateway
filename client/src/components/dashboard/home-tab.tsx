@@ -208,15 +208,16 @@ export default function HomeTab() {
       point.A = Math.round(result.scores.A || 0);
       point.C = Math.round(result.scores.C || 0);
     } else {
-      Object.keys(result.scores || {}).forEach(key => {
-        point[key] = typeof result.scores[key] === 'number' ? Math.round(result.scores[key]) : result.scores[key];
+      const scores = (result.scores || {}) as Record<string, number>;
+      Object.keys(scores).forEach(key => {
+        point[key] = typeof scores[key] === 'number' ? Math.round(scores[key]) : scores[key];
       });
     }
     return point;
   });
   const dataKeys = selectedTimeline === 'Big Five'
     ? ['O', 'C', 'E', 'A', 'N']
-    : Object.keys(filteredTimelineResults[0]?.scores || {}).filter(k => typeof filteredTimelineResults[0].scores[k] === 'number');
+    : Object.keys(filteredTimelineResults[0]?.scores || {}).filter(k => typeof (filteredTimelineResults[0].scores as Record<string, number>)[k] === 'number');
   const dynamicColors = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488'];
 
   const radarData = latest && latest.scores && latest.scores.O !== undefined ? [
