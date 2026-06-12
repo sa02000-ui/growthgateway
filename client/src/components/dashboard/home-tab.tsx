@@ -24,6 +24,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
 import { format, differenceInDays } from 'date-fns';
+import type { AssessmentScores } from '@shared/schema';
 
 type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
 
@@ -31,7 +32,7 @@ interface AssessmentResult {
   id: string;
   user_id: string;
   assessment_type: string;
-  scores: Record<TraitKey, number>;
+  scores: AssessmentScores;
   completed_at: string;
 }
 
@@ -208,16 +209,16 @@ export default function HomeTab() {
       point.A = Math.round(result.scores.A || 0);
       point.C = Math.round(result.scores.C || 0);
     } else {
-      const scores = (result.scores || {}) as Record<string, number>;
+      const scores = result.scores || {};
       Object.keys(scores).forEach(key => {
-        point[key] = typeof scores[key] === 'number' ? Math.round(scores[key]) : scores[key];
+        point[key] = Math.round(scores[key]);
       });
     }
     return point;
   });
   const dataKeys = selectedTimeline === 'Big Five'
     ? ['O', 'C', 'E', 'A', 'N']
-    : Object.keys(filteredTimelineResults[0]?.scores || {}).filter(k => typeof (filteredTimelineResults[0].scores as Record<string, number>)[k] === 'number');
+    : Object.keys(filteredTimelineResults[0]?.scores || {});
   const dynamicColors = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488'];
 
   const radarData = latest && latest.scores && latest.scores.O !== undefined ? [

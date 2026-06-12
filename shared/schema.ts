@@ -378,8 +378,27 @@ export const traitConfigSchema = z.object({
 
 export type TraitConfig = z.infer<typeof traitConfigSchema>;
 
-export const assessmentResponsesSchema = z.record(z.string(), z.union([z.number(), z.string()]));
+// Responses are keyed by question number and coerced to numbers at the validation
+// boundary, so consumers never have to deal with `string` values or scattered Number() calls.
+export const assessmentResponsesSchema = z.record(z.string(), z.coerce.number());
 export type AssessmentResponses = z.infer<typeof assessmentResponsesSchema>;
+
+// Result scores keyed by trait/category key. Covers both the fixed Big-Five traits
+// (N/E/O/A/C) and dynamic multi-category assessments (RIASEC, TEIQue, etc.).
+export const assessmentScoresSchema = z.record(z.string(), z.number());
+export type AssessmentScores = z.infer<typeof assessmentScoresSchema>;
+
+// Shape of a stored assessment result row as returned to the client by the
+// /api/assessment/results endpoints (snake_case, mirrors the results_log table).
+export interface StoredAssessmentResult {
+  id: string;
+  user_id: string;
+  assessment_type: string;
+  assessment_slug?: string | null;
+  responses?: AssessmentResponses;
+  scores: AssessmentScores;
+  completed_at: string;
+}
 
 export const insertProfileHistorySchema = createInsertSchema(profileHistory).omit({
   id: true,

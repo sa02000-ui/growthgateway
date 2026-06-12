@@ -1,1 +1,2 @@
 - [Auth & authorization model](auth-model.md) — Express routes use Supabase service_role (bypasses RLS); requireAuth + getUserId is the only authz layer, never trust client IDs; anon-readable tables still need RLS.
+- [Assessment response & score types](assessment-response-types.md) — two distinct AssessmentResponses types (schema=numeric for IPIP, scoring-engine=number|string for dynamic tests); don't unify or you break ICAR scoring.

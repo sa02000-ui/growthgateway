@@ -24,9 +24,8 @@ export function calculateTraitScore(trait: TraitKey, responses: AssessmentRespon
   let answeredCount = 0;
   
   for (const questionId of questionIds) {
-    const raw = responses[String(questionId)];
-    if (raw !== undefined) {
-      const response = typeof raw === 'number' ? raw : Number(raw);
+    const response = responses[String(questionId)];
+    if (response !== undefined) {
       totalScore += scoreQuestion(questionId, response);
       answeredCount++;
     }
@@ -57,11 +56,11 @@ export function validateResponses(responses: AssessmentResponses): { valid: bool
   const errors: string[] = [];
   
   for (let i = 1; i <= 120; i++) {
-    const raw = responses[String(i)];
-    if (raw === undefined) {
+    const response = responses[String(i)];
+    if (response === undefined) {
       errors.push(`Missing response for question ${i}`);
-    } else if (Number(raw) < 1 || Number(raw) > 5) {
-      errors.push(`Invalid response for question ${i}: ${raw}. Must be between 1 and 5.`);
+    } else if (response < 1 || response > 5) {
+      errors.push(`Invalid response for question ${i}: ${response}. Must be between 1 and 5.`);
     }
   }
   

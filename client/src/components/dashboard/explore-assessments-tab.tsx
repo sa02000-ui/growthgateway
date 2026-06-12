@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useAuth } from '@/lib/auth-context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
+import type { StoredAssessmentResult } from '@shared/schema';
 
 interface LibraryAssessment {
   id: string;
@@ -198,7 +199,7 @@ export default function ExploreAssessmentsTab() {
     queryKey: ['/api/assessments-library'],
   });
 
-  const { data: resultsData, isLoading: resultsLoading } = useQuery<{ results: Array<Record<string, unknown>> }>({
+  const { data: resultsData, isLoading: resultsLoading } = useQuery<{ results: StoredAssessmentResult[] }>({
     queryKey: ['/api/assessment/results', user?.id],
     enabled: !!user?.id,
   });
@@ -208,20 +209,20 @@ export default function ExploreAssessmentsTab() {
 
   const getLastTaken = (assessmentName: string) => {
     const assessmentResults = results.filter(r => 
-      (r.assessment_type as string)?.toLowerCase().includes(assessmentName.toLowerCase().split(' ')[0]) ||
-      (r.assessment_type as string)?.toLowerCase() === assessmentName.toLowerCase()
+      r.assessment_type?.toLowerCase().includes(assessmentName.toLowerCase().split(' ')[0]) ||
+      r.assessment_type?.toLowerCase() === assessmentName.toLowerCase()
     );
     if (assessmentResults.length === 0) return null;
     const sorted = assessmentResults.sort((a, b) => 
-      new Date(b.completed_at as string).getTime() - new Date(a.completed_at as string).getTime()
+      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
     );
-    return new Date(sorted[0].completed_at as string);
+    return new Date(sorted[0].completed_at);
   };
 
   const getHistoryCount = (assessmentName: string) => {
     return results.filter(r => 
-      (r.assessment_type as string)?.toLowerCase().includes(assessmentName.toLowerCase().split(' ')[0]) ||
-      (r.assessment_type as string)?.toLowerCase() === assessmentName.toLowerCase()
+      r.assessment_type?.toLowerCase().includes(assessmentName.toLowerCase().split(' ')[0]) ||
+      r.assessment_type?.toLowerCase() === assessmentName.toLowerCase()
     ).length;
   };
 
@@ -821,7 +822,7 @@ export default function ExploreAssessmentsTab() {
 
   if (state === 'history') {
     const historyResults = results.sort((a, b) => 
-      new Date(b.completed_at as string).getTime() - new Date(a.completed_at as string).getTime()
+      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
     );
 
     return (
@@ -849,8 +850,8 @@ export default function ExploreAssessmentsTab() {
           </div>
         ) : historyResults.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {historyResults.map((result: Record<string, unknown>) => (
-              <Card key={result.id as string} className="bg-card border-border" data-testid={`card-result-${result.id}`}>
+            {historyResults.map((result) => (
+              <Card key={result.id} className="bg-card border-border" data-testid={`card-result-${result.id}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -859,11 +860,11 @@ export default function ExploreAssessmentsTab() {
                       </div>
                       <div>
                         <CardTitle className="text-base font-semibold text-foreground">
-                          {result.assessment_type as string}
+                          {result.assessment_type}
                         </CardTitle>
                         <CardDescription className="text-sm mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {new Date(result.completed_at as string).toLocaleDateString()}
+                          {new Date(result.completed_at).toLocaleDateString()}
                         </CardDescription>
                       </div>
                     </div>
@@ -874,16 +875,15 @@ export default function ExploreAssessmentsTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {!!result.scores && typeof result.scores === 'object' && (() => {
-                    const scoresObj = result.scores as Record<string, number>;
-                    const scoreEntries = Object.entries(scoresObj).slice(0, 5);
+                  {!!result.scores && (() => {
+                    const scoreEntries = Object.entries(result.scores).slice(0, 5);
                     return (
                       <div className="flex flex-wrap gap-2">
                         {scoreEntries.map(([key, value]) => (
                           <div key={key} className="p-2 bg-muted/50 rounded-md">
                             <div className="text-xs text-muted-foreground">{key}</div>
                             <div className="text-sm font-semibold text-foreground">
-                              {typeof value === 'number' ? `${Math.round(value)}%` : String(value)}
+                              {`${Math.round(value)}%`}
                             </div>
                           </div>
                         ))}

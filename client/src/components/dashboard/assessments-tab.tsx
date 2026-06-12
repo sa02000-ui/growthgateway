@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import questionsData from '@/data/questions.json';
 import { getCompletionPercentage, getTraitInterpretation } from '@shared/scoring';
-import type { TraitScores, AssessmentResponses } from '@shared/schema';
+import type { TraitScores, AssessmentResponses, StoredAssessmentResult } from '@shared/schema';
 import { ShareDialog } from '@/components/assessment/share-dialog';
 
 type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
@@ -63,7 +63,7 @@ export default function AssessmentsTab() {
   const questionsPerPage = 10;
   const totalPages = Math.ceil(questions.length / questionsPerPage);
 
-  const { data: resultsData, isLoading: resultsLoading } = useQuery<{ results: Array<Record<string, unknown>> }>({
+  const { data: resultsData, isLoading: resultsLoading } = useQuery<{ results: StoredAssessmentResult[] }>({
     queryKey: ['/api/assessment/results', user?.id],
     enabled: !!user?.id,
   });
@@ -431,8 +431,8 @@ export default function AssessmentsTab() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-[#0f172a]">Previous Results</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {results.map((result: Record<string, unknown>) => (
-              <Card key={result.id as string} className="bg-white border-[#0f172a]/10" data-testid={`card-result-${result.id}`}>
+            {results.map((result) => (
+              <Card key={result.id} className="bg-white border-[#0f172a]/10" data-testid={`card-result-${result.id}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -441,11 +441,11 @@ export default function AssessmentsTab() {
                       </div>
                       <div>
                         <CardTitle className="text-base font-semibold text-[#0f172a]">
-                          {getDisplayName((result.assessment_slug as string) || (result.assessment_type as string))}
+                          {getDisplayName(result.assessment_slug || result.assessment_type)}
                         </CardTitle>
                         <CardDescription className="text-sm mt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {new Date(result.completed_at as string).toLocaleDateString()}
+                          {new Date(result.completed_at).toLocaleDateString()}
                         </CardDescription>
                       </div>
                     </div>
@@ -459,12 +459,11 @@ export default function AssessmentsTab() {
                   {result.assessment_type === 'IPIP-NEO-120' ? (
                     <div className="grid grid-cols-5 gap-2 text-center">
                       {(['O', 'C', 'E', 'A', 'N'] as TraitKey[]).map((trait) => {
-                        const scores = result.scores as TraitScores;
                         return (
                           <div key={trait} className="p-2 bg-[#0f172a]/5 rounded-md">
                             <div className="text-xs text-gray-500">{traitNames[trait]}</div>
                             <div className="text-sm font-semibold text-[#0f172a]">
-                              {Math.round(scores[trait])}%
+                              {Math.round(result.scores[trait])}%
                             </div>
                           </div>
                         );
@@ -472,14 +471,14 @@ export default function AssessmentsTab() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
-                      {Object.entries(result.scores as Record<string, number>).map(([key, value]) => {
+                      {Object.entries(result.scores).map(([key, value]) => {
                         const label = traitKeyLabels[key] || key;
                         return (
                           <div key={key} className="p-2 bg-[#0f172a]/5 rounded-md">
                             <div className="text-xs text-gray-500 truncate" title={label}>{label}</div>
                             <div className="text-sm font-semibold text-[#0f172a]">
-                              {typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}
-                              {typeof value === 'number' && (result.scores as Record<string, number>)[key] <= 100 ? '%' : ''}
+                              {Number.isInteger(value) ? value : value.toFixed(1)}
+                              {value <= 100 ? '%' : ''}
                             </div>
                           </div>
                         );
