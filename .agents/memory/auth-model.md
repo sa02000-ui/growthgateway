@@ -58,3 +58,16 @@ run by hand in the Supabase SQL editor; DDL can't run from the app env).
 **Why:** task-2 audit confirmed anon reads already return 0 rows on the sensitive
 tables, but anon INSERT into `peer_feedback` was still permitted until that SQL
 is applied.
+
+# Verifying RLS via the anon REST API (non-obvious gotchas)
+
+Automated drift check lives at `security/check-rls.ts` (`npx tsx security/check-rls.ts`,
+anon key only). Two traps when probing PostgREST directly:
+- A ranged GET (`Range: 0-0`) returns **HTTP 206**, not 200. Treat 200 *and* 206
+  as success; row total is the number after `/` in the `Content-Range` header
+  (`*/0` = empty).
+- On an anon INSERT, **only** an RLS denial (HTTP 401/403 or Postgres code
+  `42501`) proves the table is protected. A NOT-NULL/constraint error (code
+  `23502`) means the insert PASSED RLS and only tripped a column constraint — i.e.
+  anon writes are NOT blocked. That 23502 was exactly the open `peer_feedback`
+  insert gap, so the check flags 23502 as a FAILURE, not a pass.
