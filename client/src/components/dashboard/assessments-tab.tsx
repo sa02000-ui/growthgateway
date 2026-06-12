@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ClipboardList, Play, Clock, CheckCircle2, ArrowLeft, ArrowRight, Brain, Loader2, User } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -17,6 +19,8 @@ import questionsData from '@/data/questions.json';
 import { getCompletionPercentage, getTraitInterpretation } from '@shared/scoring';
 import type { TraitScores, AssessmentResponses, StoredAssessmentResult } from '@shared/schema';
 import { ShareDialog } from '@/components/assessment/share-dialog';
+import { ResultsDisclaimer } from '@/components/assessment/care-notices';
+import { lifeEventOptions } from '@shared/schema';
 
 type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
 
@@ -54,11 +58,26 @@ export default function AssessmentsTab() {
   const [latestResultId, setLatestResultId] = useState<string | null>(null);
   const [showProfileConfirm, setShowProfileConfirm] = useState(false);
   const [profileNoChange, setProfileNoChange] = useState(false);
+  const [newEventType, setNewEventType] = useState('');
+  const [newEventYear, setNewEventYear] = useState('');
+  const [savingEvent, setSavingEvent] = useState(false);
 
   const handleNavigateToProfile = () => {
     setShowProfileConfirm(false);
     setLocation('/dashboard/profile');
   };
+
+  const resetConfirmState = () => {
+    setProfileNoChange(false);
+    setNewEventType('');
+    setNewEventYear('');
+  };
+
+  // The confirm dialog can either confirm "nothing changed" OR capture a single
+  // life event inline, so the user is never forced to re-enter their full
+  // demographic profile just to start an assessment.
+  const canConfirmStart =
+    profileNoChange || (newEventType !== '' && newEventYear.trim() !== '');
 
   const questionsPerPage = 10;
   const totalPages = Math.ceil(questions.length / questionsPerPage);
@@ -93,9 +112,27 @@ export default function AssessmentsTab() {
     setShowProfileConfirm(true);
   };
 
-  const confirmAndStart = () => {
+  const confirmAndStart = async () => {
+    // If the user logged a life event inline, persist it before starting.
+    // Do NOT proceed silently if the save fails — surface it so the event
+    // isn't lost without the user knowing.
+    if (!profileNoChange && newEventType && newEventYear.trim() && user?.id) {
+      try {
+        setSavingEvent(true);
+        await apiRequest('POST', `/api/profile/${user.id}`, {
+          lifeEvents: [{ type: newEventType, year: newEventYear.trim(), significance: 5 }],
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/profile', user.id] });
+      } catch (error) {
+        console.error('Failed to save life event:', error);
+        alert('We could not save that life event. Please try again, or check "Nothing has changed" to continue without it.');
+        return;
+      } finally {
+        setSavingEvent(false);
+      }
+    }
     setShowProfileConfirm(false);
-    setProfileNoChange(false);
+    resetConfirmState();
     setResponses({});
     setCurrentPage(0);
     setState('taking');
@@ -312,6 +349,8 @@ export default function AssessmentsTab() {
             Done
           </Button>
         </div>
+
+        <ResultsDisclaimer />
       </div>
     );
   }
@@ -376,11 +415,11 @@ export default function AssessmentsTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              Confirm Your Profile
+              Anything changed since last time?
             </DialogTitle>
             <DialogDescription>
-              Before taking the assessment, please ensure your demographic profile is up to date. 
-              This helps us provide more accurate longitudinal insights.
+              Context helps us interpret how your results shift over time. You don't
+              need to re-enter your whole profile — just let us know if anything's new.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -388,17 +427,68 @@ export default function AssessmentsTab() {
               <Checkbox
                 id="noChange"
                 checked={profileNoChange}
-                onCheckedChange={(checked) => setProfileNoChange(checked === true)}
+                onCheckedChange={(checked) => {
+                  const isChecked = checked === true;
+                  setProfileNoChange(isChecked);
+                  if (isChecked) {
+                    setNewEventType('');
+                    setNewEventYear('');
+                  }
+                }}
                 data-testid="checkbox-no-change"
               />
               <Label htmlFor="noChange" className="text-sm cursor-pointer">
-                No changes since my last assessment
+                Nothing has changed since my last assessment
               </Label>
             </div>
-            <p className="text-sm text-muted-foreground">
-              If your life circumstances have changed (job, location, relationships, etc.), 
-              please update your profile before continuing.
-            </p>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-background px-2 text-xs text-muted-foreground">or log a life event</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Event type (optional)</Label>
+                <Select
+                  value={newEventType}
+                  onValueChange={(value) => {
+                    setNewEventType(value);
+                    setProfileNoChange(false);
+                  }}
+                >
+                  <SelectTrigger data-testid="select-quick-event-type">
+                    <SelectValue placeholder="Select a recent life event" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lifeEventOptions.map((opt) => (
+                      <SelectItem key={opt.key} value={opt.key}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Year</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="e.g. 2026"
+                  value={newEventYear}
+                  onChange={(e) => {
+                    setNewEventYear(e.target.value);
+                    if (e.target.value.trim()) setProfileNoChange(false);
+                  }}
+                  data-testid="input-quick-event-year"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                For larger updates (job, location, relationships, etc.) you can open your full profile.
+              </p>
+            </div>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button 
@@ -408,15 +498,15 @@ export default function AssessmentsTab() {
               data-testid="button-update-profile"
             >
               <User className="w-4 h-4" />
-              Update Profile
+              Open Full Profile
             </Button>
             <Button 
               onClick={confirmAndStart} 
-              disabled={!profileNoChange}
+              disabled={!canConfirmStart || savingEvent}
               className="w-full sm:w-auto gap-2"
               data-testid="button-confirm-start"
             >
-              <Play className="w-4 h-4" />
+              {savingEvent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               Continue to Assessment
             </Button>
           </DialogFooter>

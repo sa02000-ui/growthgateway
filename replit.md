@@ -127,6 +127,8 @@ npm run dev
 - **multi_category**: Scores across multiple independent categories (RIASEC, TEIQue-SF)
 
 ## Recent Changes
+- 2026-06-12: Phase 6 (duty of care) — added reusable care-notices (persistent non-clinical ResultsDisclaimer on results/AI insight; SupportiveResources with crisis helpline shown only for distressing state ranges: PSS-10 high, SWLS/Flourishing low, BRS low). Reworked the pre-assessment confirm dialog into an "anything changed since last time?" flow with optional inline life-event capture (no forced demographic re-entry). Made POST /api/profile/:userId accept lifeEvents-only payloads (profile now optional).
+- 2026-06-12: Phase 4 (peer feedback, safe subset) — never expose raw user.id in share links (link/copy/invite disabled until secure token loads, in both home and peer-feedback tabs); standardized peer Likert to a shared agree/disagree scale; added an instructed-response attention check (ignored by scoring) + straight-lining detection gating the feedback form. DEFERRED (external Supabase tables, anon key, no DDL): relationship-segmentation column, one-time invite token used-flag, matched self mini-form persistence.
 - 2026-06-12: Removed the non-functional Groups / Family & Teams feature (UI tab, dead /api/groups* routes querying non-existent Supabase tables, and groups/group_members schema). Cleaned account deletion of dead group_members and shared_result_tokens references.
 - 2026-06-12: Fixed AI insights to read profile (user_profiles) and life events (life_events_log) from Replit Postgres instead of non-existent Supabase tables, so demographic/life-event context is actually used.
 - 2025-01-02: Phase 14 Identity & Privacy Layer complete

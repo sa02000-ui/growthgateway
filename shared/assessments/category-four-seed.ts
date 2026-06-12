@@ -1,5 +1,8 @@
 export const PSS_10_CONFIG = {
   slug: 'pss-10',
+  measurement_class: 'state' as const,
+  retest_interval_days: 14,
+  sd: 18,
   name: 'Perceived Stress Scale (PSS-10)',
   category: 'How I Feel',
   description: 'The most widely used instrument for measuring the perception of stress in daily life.',
@@ -8,7 +11,6 @@ export const PSS_10_CONFIG = {
   question_count: 10,
   estimated_time: '3 mins',
   cronbach_alpha: 0.85,
-  validity_score: 0.78,
   scoring_algorithm: 'average' as const,
   scoring_type: 'single_score' as const,
   input_type: 'likert_0_4',
@@ -35,6 +37,9 @@ export const PSS_10_QUESTIONS = [
 
 export const SWLS_CONFIG = {
   slug: 'swls-5',
+  measurement_class: 'state' as const,
+  retest_interval_days: 30,
+  sd: 18,
   name: 'Satisfaction With Life Scale (SWLS)',
   category: 'How I Feel',
   description: 'A short, valid measure of global life satisfaction and subjective well-being.',
@@ -43,7 +48,6 @@ export const SWLS_CONFIG = {
   question_count: 5,
   estimated_time: '1-2 mins',
   cronbach_alpha: 0.87,
-  validity_score: 0.82,
   scoring_algorithm: 'summation' as const,
   scoring_type: 'single_score' as const,
   input_type: 'likert_7',
@@ -65,6 +69,9 @@ export const SWLS_QUESTIONS = [
 
 export const BRS_CONFIG = {
   slug: 'brs-6',
+  measurement_class: 'state' as const,
+  retest_interval_days: 30,
+  sd: 18,
   name: 'Brief Resilience Scale (BRS)',
   category: 'How I Feel',
   description: 'Measures the ability to bounce back or recover from stress and adversity.',
@@ -73,7 +80,6 @@ export const BRS_CONFIG = {
   question_count: 6,
   estimated_time: '2 mins',
   cronbach_alpha: 0.83,
-  validity_score: 0.76,
   scoring_algorithm: 'average' as const,
   scoring_type: 'single_score' as const,
   input_type: 'likert_5',
@@ -96,6 +102,9 @@ export const BRS_QUESTIONS = [
 
 export const FS_CONFIG = {
   slug: 'flourishing-8',
+  measurement_class: 'state' as const,
+  retest_interval_days: 30,
+  sd: 16,
   name: 'Flourishing Scale (FS)',
   category: 'How I Feel',
   description: 'Measures self-perceived success in relationships, self-esteem, purpose, and optimism.',
@@ -104,7 +113,6 @@ export const FS_CONFIG = {
   question_count: 8,
   estimated_time: '2-3 mins',
   cronbach_alpha: 0.87,
-  validity_score: 0.80,
   scoring_algorithm: 'summation' as const,
   scoring_type: 'single_score' as const,
   input_type: 'likert_7',

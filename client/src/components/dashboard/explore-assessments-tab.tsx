@@ -32,6 +32,7 @@ import { useAuth } from '@/lib/auth-context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import type { StoredAssessmentResult } from '@shared/schema';
+import { isOneTimeAssessment } from '@shared/reliable-change';
 
 interface LibraryAssessment {
   id: string;
@@ -107,7 +108,7 @@ const categoryConfig: Record<string, { name: string; subtitle: string; icon: typ
   'How I Feel': { name: 'How I Feel?', subtitle: 'Well-being & Resilience', icon: Heart, description: 'Mental health indicators and emotional resilience', color: 'text-emerald-700 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-950/40', borderColor: 'border-emerald-200 dark:border-emerald-800', badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' },
 };
 
-const assessmentMeta: Record<string, { displayName: string; popularName?: string; scientificRef: string; description: string }> = {
+const assessmentMeta: Record<string, { displayName: string; popularName?: string; scientificRef: string; adaptedFrom?: string; description: string }> = {
   'ipip-neo-120': {
     displayName: 'Big Five Personality Assessment',
     popularName: 'Similar to Myers-Briggs / 16Personalities',
@@ -117,7 +118,8 @@ const assessmentMeta: Record<string, { displayName: string; popularName?: string
   'schwartz-pvq-21': {
     displayName: 'Core Values & Motivations Assessment',
     popularName: 'Similar to VIA Character Strengths',
-    scientificRef: 'Schwartz, S.H. (2003). A proposal for measuring value orientations across nations. European Social Survey Core Questionnaire Development, Ch. 7.',
+    scientificRef: 'Schwartz, S.H., et al. (2001). Extending the cross-cultural validity of the theory of basic human values with a different method of measurement. Journal of Cross-Cultural Psychology, 32(5), 519-542.',
+    adaptedFrom: 'Portrait Values Questionnaire (PVQ-21, ESS short form)',
     description: 'Identifies your core drivers and motivations — what matters most to you in life, such as achievement, security, benevolence, or self-direction.',
   },
   'short-dark-triad-sd3': {
@@ -141,13 +143,15 @@ const assessmentMeta: Record<string, { displayName: string; popularName?: string
   'onet-riasec-30': {
     displayName: 'Career Interest & Work Style Profile',
     popularName: 'Holland Code / RIASEC Career Test',
-    scientificRef: 'Rounds, J. et al. (2010). O*NET Interest Profiler Short Form psychometric characteristics. U.S. Department of Labor.',
+    scientificRef: 'Rounds, J., et al. (1999). Development of an O*NET Interest Profiler. National Center for O*NET Development, U.S. Department of Labor.',
+    adaptedFrom: 'O*NET Interest Profiler (Short Form)',
     description: 'Identifies your career interests across six dimensions to find careers that match your natural inclinations and work preferences.',
   },
   'teique-sf-30': {
     displayName: 'Emotional Intelligence Assessment',
     popularName: 'EQ / Emotional Quotient Test',
-    scientificRef: 'Petrides, K.V. (2009). Psychometric properties of the Trait Emotional Intelligence Questionnaire (TEIQue). In C. Stough et al. (Eds.), Assessing Emotional Intelligence.',
+    scientificRef: 'Cooper, A. & Petrides, K.V. (2010). A psychometric analysis of the Trait Emotional Intelligence Questionnaire–Short Form (TEIQue–SF) using item response theory. Journal of Personality Assessment, 92(5), 449-457.',
+    adaptedFrom: 'Trait Emotional Intelligence Questionnaire (TEIQue-SF)',
     description: 'Measures your emotional intelligence across four factors: Well-being, Self-control, Emotionality, and Sociability.',
   },
   'pss-10': {
@@ -967,10 +971,12 @@ export default function ExploreAssessmentsTab() {
                 {group.assessments.map((assessment) => {
                   const lastTaken = getLastTaken(assessment.name);
                   const historyCount = getHistoryCount(assessment.name);
+                  const oneTimeLocked = isOneTimeAssessment(assessment.slug || assessment.name) && !!lastTaken;
                   const meta = assessmentMeta[assessment.slug || ''];
                   const displayName = meta?.displayName || assessment.name;
                   const popularName = meta?.popularName;
                   const scientificRef = meta?.scientificRef;
+                  const adaptedFrom = meta?.adaptedFrom;
                   const enhancedDescription = meta?.description || assessment.description;
 
                   return (
@@ -1008,6 +1014,11 @@ export default function ExploreAssessmentsTab() {
                                     <span className="text-xs font-semibold">Scientific Reference</span>
                                   </div>
                                   <p className="text-xs text-muted-foreground leading-relaxed">{scientificRef}</p>
+                                  {adaptedFrom && (
+                                    <p className="text-xs text-muted-foreground/80 leading-relaxed italic" data-testid={`text-adapted-${assessment.id}`}>
+                                      Adapted from the {adaptedFrom}. Item wording may differ from the original; reliability figures refer to the source instrument.
+                                    </p>
+                                  )}
                                   <Badge variant="outline" className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                                     <CheckCircle2 className="w-3 h-3" />
                                     Peer Reviewed
@@ -1042,10 +1053,11 @@ export default function ExploreAssessmentsTab() {
                           <Button 
                             onClick={() => handleStartClick(assessment.id, assessment.name)} 
                             className="flex-1 gap-2" 
+                            disabled={oneTimeLocked}
                             data-testid={`button-start-${assessment.id}`}
                           >
                             <Play className="w-4 h-4" />
-                            {lastTaken ? 'Retake Assessment' : 'Start Assessment'}
+                            {oneTimeLocked ? 'Completed' : (lastTaken ? 'Retake Assessment' : 'Start Assessment')}
                           </Button>
                           {historyCount > 0 && (
                             <Button 
@@ -1059,6 +1071,12 @@ export default function ExploreAssessmentsTab() {
                             </Button>
                           )}
                         </div>
+                        {oneTimeLocked && (
+                          <p className="text-xs text-muted-foreground flex items-start gap-1.5" data-testid={`text-onetime-${assessment.id}`}>
+                            <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                            This is a measure of stable ability — retaking it mainly reflects practice and memory, not real change, so it's taken once. View your result in History.
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   );

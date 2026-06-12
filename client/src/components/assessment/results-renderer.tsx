@@ -19,6 +19,25 @@ import {
 import type { AssessmentResult, TraitScore } from '../../../../shared/scoring-engine';
 import { getAssessmentVisualizationType } from '../../../../shared/scoring-engine';
 import { Info } from 'lucide-react';
+import { ResultsDisclaimer, SupportiveResources } from './care-notices';
+
+// Detect when a state-based result falls into a potentially distressing range,
+// so we can surface supportive framing and resources.
+function isDistressRange(result: AssessmentResult): boolean {
+  const score = result.traitScores[0]?.score ?? 0;
+  switch (result.slug) {
+    case 'pss-10':
+      return score > 50; // High / Very High perceived stress
+    case 'swls-5':
+      return score * 5 < 15; // Dissatisfied or worse
+    case 'flourishing-8':
+      return score * 8 < 32; // Low flourishing
+    case 'brs-6':
+      return score < 25; // Low resilience
+    default:
+      return false;
+  }
+}
 
 interface ResultsRendererProps {
   result: AssessmentResult;
@@ -52,6 +71,10 @@ export function ResultsRenderer({ result, assessmentName, assessmentDescription 
       {result.facetScores && result.facetScores.length > 0 && (
         <FacetScoresCard facetScores={result.facetScores} />
       )}
+
+      {isDistressRange(result) && <SupportiveResources />}
+
+      <ResultsDisclaimer />
     </div>
   );
 }

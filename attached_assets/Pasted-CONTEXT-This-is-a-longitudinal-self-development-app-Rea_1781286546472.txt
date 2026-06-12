@@ -1,0 +1,114 @@
+CONTEXT
+This is a longitudinal self-development app (React + Vite client, Express server, Supabase for 
+auth/data + a separate Replit Postgres via DATABASE_URL for profiles/life-events). Users take 
+psychometric assessments over time, log life events in their profile, and collect peer feedback to 
+compare self-perception vs how others see them. A prior pass added requireAuth/getUserId 
+(server/auth.ts) and rate limiting (server/rate-limit.ts), removed the Groups feature, hardened 
+types, and locked down RLS — DO NOT regress any of that. Every protected route must keep using 
+requireAuth and the token's user id, never a userId from the URL/body.
+
+Implement the following in priority order. Create DB migrations as needed. After each phase, run 
+`npm run check` (tsc) and confirm it passes.
+
+==========================================================
+PHASE 1 — Distinguish stable TRAITS from changeable STATES (most important)
+==========================================================
+Problem: the app trends all tests the same way, but Big Five, Dark Triad, RIASEC and the ICAR 
+cognitive test are stable/fixed — retaking them monthly shows noise + practice effects, not growth. 
+Only wellbeing/state measures (PSS-10, SWLS, BRS, Flourishing) meaningfully change short-term.
+
+1. Add a `measurementClass: 'trait' | 'state'` field and a `retestIntervalDays` number to each 
+   assessment's seed metadata (shared/assessments/*.ts and the library builder in server/routes.ts).
+   - trait (revisit ~yearly, retestIntervalDays ~365): IPIP Big Five, PVQ, SD3, RIASEC, ICAR.
+   - state (revisit anytime, retestIntervalDays ~7–30): PSS-10, SWLS, BRS, Flourishing, and all 
+     new state tests added later.
+2. ICAR cognitive test: mark as ONE-TIME. After a user has one result, disable retaking and show 
+   "Cognitive ability is stable; repeat testing mainly measures item memory." Remove ICAR from any 
+   time-series/trend view.
+3. Reliable Change Index: where an assessment has a Cronbach's alpha and an SD, compute 
+   RCI = 1.96 * SD * sqrt(2) * sqrt(1 - alpha). Only label a change between two results as 
+   "meaningful" when |change| exceeds the RCI. Add a shared util (e.g. shared/reliable-change.ts) and 
+   use it in client comparisons (replace the raw point-difference logic in 
+   client/src/components/dashboard/home-tab.tsx calculateComparison).
+4. On all trend lines, render a shaded confidence band (±RCI or ±1 SEM) so users don't 
+   over-interpret noise.
+
+==========================================================
+PHASE 2 — Dashboard rework
+==========================================================
+1. Split the dashboard into two clearly separated panels:
+   - "Your Profile" (trait measures) — a current snapshot with a subtle long-term view, NOT an 
+     eager trend line.
+   - "Your Journey" (state/wellbeing measures) — the real time-series experience.
+2. Life-event overlays: users log life events (Replit Postgres table life_events_log: user_id, 
+   event_type, year, significance). Plot these as vertical marker annotations ON the state trend 
+   charts (e.g. "New job — 2026"). (The AI insight already reads life events; this is the separate 
+   CHART overlay.) This is the payoff of the whole app — make events visible on the timeline.
+3. Add a top-of-dashboard summary card: "What changed, and is it meaningful?" — one or two plain 
+   sentences derived from most-recent vs prior state results, gated by the Phase 1 RCI 
+   (e.g. "Your perceived stress dropped 18 points since your job change — a meaningful decrease.").
+4. filterTo30DayWindows in home-tab.tsx silently keeps only the last result per 30-day window. Keep 
+   the de-dup but surface it ("showing your most recent result per month") so users don't think data 
+   was lost.
+
+==========================================================
+PHASE 3 — Fix references + catalog honesty
+(The AI life_events bug and the unbuilt-test hiding are ALREADY DONE — skip them.)
+==========================================================
+1. Fix scientific references in shared/assessments/*.ts and the display list in server/routes.ts:
+   - Schwartz PVQ: "Schwartz et al. (2001)" for the instrument (1992 is the theory).
+   - RIASEC / O*NET Interest Profiler: "Rounds et al. (1999)".
+   - TEIQue-SF: "Cooper & Petrides (2010)".
+   - Short Dark Triad: verify it reads "Jones & Paulhus (2014)".
+2. Remove the single numeric `validity_score` field everywhere (category-four-seed.ts has 4). Keep 
+   cronbach_alpha, displayed as "internal reliability".
+3. If any test uses custom-written items rather than validated wording, add an "Adapted from 
+   [instrument]" note and do not display borrowed norms/alpha for it.
+
+==========================================================
+PHASE 4 — Peer feedback upgrades
+==========================================================
+1. Relationship segmentation (highest-value new feature): add a required "your relationship to this 
+   person" selector on the peer feedback page (Colleague/Work, Family, Friend, Partner, Other). Store 
+   it on peer_feedback (add a `relationship` column via migration). On the user's dashboard, let them 
+   view the self-vs-peer gap BOTH overall AND by relationship group (respecting the existing 
+   "minimum 3 responses" privacy threshold per group).
+2. One-time invite tokens: instead of one reusable link, generate per-rater invite tokens so each 
+   invitee submits only once (prevents one person skewing the average). Reuse the existing 
+   email-invite flow. Keep a generic public link option too, rate-limited and deduped where possible.
+3. Apples-to-apples self/peer gap: the peer form is a 30-item mini-IPIP but the self measure is the 
+   120-item NEO, so part of the "gap" is just instrument difference. Add a matched 30-item self 
+   mini-form (same items as shared/peer-feedback-questions.ts, "I" instead of "they"), scored 
+   identically, and compute the headline gap on THAT. Keep the 120-item version for depth.
+4. SECURITY/PRIVACY: the share link falls back to the raw Supabase user.id when the token hasn't 
+   loaded (client/src/components/dashboard/home-tab.tsx feedbackUrl). Never expose the raw user id — 
+   always use the opaque feedback token; if it isn't loaded yet, disable the share button.
+5. Standardize the Likert labels: the server scale ("Very Inaccurate→Very Accurate") and the peer 
+   page ("Strongly Disagree→Strongly Agree") disagree. Pick one consistent agree/disagree scale.
+6. Add 1–2 attention-check items and simple straight-lining detection to both self and peer surveys; 
+   flag/exclude careless responses from averages.
+
+==========================================================
+PHASE 5 — New assessments
+==========================================================
+Add the public-domain wellbeing/growth tests (WHO-5, I-PANAS-SF, UCLA-3, Cantril Ladder, RSES, GSE) 
+and a custom 360 peer-competency set. EXACT item wording, scales, reverse-coding, scoring, and new 
+input_type scales will be provided in a SEPARATE follow-up prompt — implement those there. Do not 
+invent item text now.
+
+==========================================================
+PHASE 6 — Duty of care & friction
+==========================================================
+1. Add a persistent, clear disclaimer near every result and AI insight: "For self-reflection and 
+   growth, not clinical diagnosis."
+2. If a state score lands in a distressing range (e.g. high PSS, low WHO-5), show supportive framing 
+   and a link to crisis/mental-health resources. Be gentle, don't alarm.
+3. Reduce friction: don't force a full demographic re-entry before every assessment. Replace the 
+   pre-test profile step with a quick "Has anything significant changed since last time?" confirm + 
+   optional life-event add.
+
+ACCEPTANCE
+- tsc (`npm run check`) passes after each phase.
+- No protected route regresses: all still use requireAuth + the token's user id.
+- New DB columns/tables created via migration; account-deletion cleanup updated to include them.
+- The Explore tab continues to show only functional tests.

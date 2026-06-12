@@ -43,45 +43,49 @@ export function registerProfileRoutes(app: Express) {
 
       const { profile, lifeEvents } = req.body;
 
-      await pool.query(
-        `INSERT INTO user_profiles (
-          user_id, marital_status, children_count, youngest_child_age,
-          birth_country, years_in_region, cultural_background,
-          profession, industry, education_level, field_of_study,
-          household_income, parental_occupation, parental_income, updated_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())
-        ON CONFLICT (user_id) DO UPDATE SET
-          marital_status = EXCLUDED.marital_status,
-          children_count = EXCLUDED.children_count,
-          youngest_child_age = EXCLUDED.youngest_child_age,
-          birth_country = EXCLUDED.birth_country,
-          years_in_region = EXCLUDED.years_in_region,
-          cultural_background = EXCLUDED.cultural_background,
-          profession = EXCLUDED.profession,
-          industry = EXCLUDED.industry,
-          education_level = EXCLUDED.education_level,
-          field_of_study = EXCLUDED.field_of_study,
-          household_income = EXCLUDED.household_income,
-          parental_occupation = EXCLUDED.parental_occupation,
-          parental_income = EXCLUDED.parental_income,
-          updated_at = NOW()`,
-        [
-          userId,
-          profile.maritalStatus || null,
-          profile.childrenCount ? parseInt(profile.childrenCount) : null,
-          profile.youngestChildAge || null,
-          profile.birthCountry || null,
-          profile.yearsInRegion || null,
-          profile.culturalBackground || null,
-          profile.profession || null,
-          profile.industry || null,
-          profile.educationLevel || null,
-          profile.fieldOfStudy || null,
-          profile.householdIncome || null,
-          profile.parentalOccupation || null,
-          profile.parentalIncome || null,
-        ]
-      );
+      // Profile is optional: callers (e.g. the pre-assessment "anything changed?"
+      // dialog) may send only a life event without re-entering demographics.
+      if (profile) {
+        await pool.query(
+          `INSERT INTO user_profiles (
+            user_id, marital_status, children_count, youngest_child_age,
+            birth_country, years_in_region, cultural_background,
+            profession, industry, education_level, field_of_study,
+            household_income, parental_occupation, parental_income, updated_at
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())
+          ON CONFLICT (user_id) DO UPDATE SET
+            marital_status = EXCLUDED.marital_status,
+            children_count = EXCLUDED.children_count,
+            youngest_child_age = EXCLUDED.youngest_child_age,
+            birth_country = EXCLUDED.birth_country,
+            years_in_region = EXCLUDED.years_in_region,
+            cultural_background = EXCLUDED.cultural_background,
+            profession = EXCLUDED.profession,
+            industry = EXCLUDED.industry,
+            education_level = EXCLUDED.education_level,
+            field_of_study = EXCLUDED.field_of_study,
+            household_income = EXCLUDED.household_income,
+            parental_occupation = EXCLUDED.parental_occupation,
+            parental_income = EXCLUDED.parental_income,
+            updated_at = NOW()`,
+          [
+            userId,
+            profile.maritalStatus || null,
+            profile.childrenCount ? parseInt(profile.childrenCount) : null,
+            profile.youngestChildAge || null,
+            profile.birthCountry || null,
+            profile.yearsInRegion || null,
+            profile.culturalBackground || null,
+            profile.profession || null,
+            profile.industry || null,
+            profile.educationLevel || null,
+            profile.fieldOfStudy || null,
+            profile.householdIncome || null,
+            profile.parentalOccupation || null,
+            profile.parentalIncome || null,
+          ]
+        );
+      }
 
       if (lifeEvents && Array.isArray(lifeEvents)) {
         for (const event of lifeEvents) {

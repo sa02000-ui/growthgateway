@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, RefreshCw, Loader2, Brain, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getAuthHeaders } from '@/lib/queryClient';
+import { ResultsDisclaimer } from '@/components/assessment/care-notices';
 
 interface AIInsightData {
   insight: string;
@@ -110,6 +111,7 @@ export default function AIInsightCard() {
                 </span>
               )}
             </div>
+            <ResultsDisclaimer />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground py-4">

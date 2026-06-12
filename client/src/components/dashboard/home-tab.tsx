@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users, Bug } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Calendar, Activity, Minus, Loader2, ClipboardList, Leaf, Share2, Copy, Check, Users, Bug, Info } from 'lucide-react';
 import { apiRequest, queryClient, getAuthHeaders } from '@/lib/queryClient';
 import AIInsightCard from './ai-insight-card';
 import { 
   LineChart, 
   Line, 
+  Area,
+  ComposedChart,
   XAxis, 
   YAxis, 
   CartesianGrid,
@@ -20,11 +22,19 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  Radar
+  Radar,
+  ReferenceLine
 } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
 import { format, differenceInDays } from 'date-fns';
 import type { AssessmentScores } from '@shared/schema';
+import {
+  assessChange,
+  standardErrorOfMeasurement,
+  classifyAssessment,
+  isOneTimeAssessment,
+  BIG_FIVE_PSYCHOMETRICS,
+} from '@shared/reliable-change';
 
 type TraitKey = 'N' | 'E' | 'O' | 'A' | 'C';
 
@@ -94,14 +104,33 @@ function calculateComparison(baseline: AssessmentResult, latest: AssessmentResul
   return traits.map(trait => {
     const baseScore = baseline?.scores?.[trait] || 0;
     const lateScore = latest?.scores?.[trait] || 0;
+    const rawChange = lateScore - baseScore;
+    const { alpha, sd } = BIG_FIVE_PSYCHOMETRICS[trait];
+    const { rci, meaningful } = assessChange(rawChange, sd, alpha);
     return {
       trait,
       name: traitNames[trait],
       baseline: Math.round(baseScore),
       latest: Math.round(lateScore),
-      change: Math.round(lateScore - baseScore),
+      change: Math.round(rawChange),
+      rci: rci !== null ? Math.round(rci) : null,
+      meaningful,
     };
   });
+}
+
+// Standard error of measurement for a given trend series, used to draw a
+// ±1 SEM confidence band so users don't over-interpret small wiggles.
+function semForKey(selectedTimeline: string, key: string): number | null {
+  if (selectedTimeline === 'Big Five') {
+    const p = BIG_FIVE_PSYCHOMETRICS[key as TraitKey];
+    return p ? standardErrorOfMeasurement(p.sd, p.alpha) : null;
+  }
+  const c = classifyAssessment(selectedTimeline);
+  if (c?.sd != null && c?.cronbachAlpha != null) {
+    return standardErrorOfMeasurement(c.sd, c.cronbachAlpha);
+  }
+  return null;
 }
 
 export default function HomeTab() {
@@ -113,6 +142,7 @@ export default function HomeTab() {
   const [peerCount, setPeerCount] = useState(0);
   const [peerAverages, setPeerAverages] = useState<Record<TraitKey, number> | null>(null);
   const [selectedTimeline, setSelectedTimeline] = useState<string>('Big Five');
+  const [lifeEvents, setLifeEvents] = useState<{ event_type: string; year: number; significance: number }[]>([]);
 
   // Fetch assessment results directly from Supabase with user's auth
   useEffect(() => {
@@ -172,6 +202,27 @@ export default function HomeTab() {
         } catch (peerErr) {
           console.log('Peer feedback table may not exist yet');
         }
+
+        // Fetch logged life events (Replit Postgres via profile API) for journey overlays
+        try {
+          const profileRes = await fetch(`/api/profile/${user.id}`, { headers: await getAuthHeaders() });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (Array.isArray(profileData.lifeEvents)) {
+              setLifeEvents(
+                profileData.lifeEvents
+                  .filter((e: any) => e.event_type && e.year)
+                  .map((e: any) => ({
+                    event_type: String(e.event_type),
+                    year: Number(e.year),
+                    significance: Number(e.significance) || 5,
+                  }))
+              );
+            }
+          }
+        } catch (lifeErr) {
+          console.log('Life events not available');
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -184,7 +235,10 @@ export default function HomeTab() {
 
   const bigFiveNames = ['IPIP-NEO-120', 'Big Five Personality Assessment'];
   const allAssessmentTypes = Array.from(new Set(results.map(r => r.assessment_type)));
-  const dropdownOptions = ['Big Five', ...allAssessmentTypes.filter(a => !bigFiveNames.includes(a))];
+  // One-time measures (e.g. ICAR cognitive ability) are excluded from trend views:
+  // retaking them mainly captures item memory, not real change.
+  const trendableTypes = allAssessmentTypes.filter(a => !isOneTimeAssessment(a));
+  const dropdownOptions = ['Big Five', ...trendableTypes.filter(a => !bigFiveNames.includes(a))];
 
   const bigFiveResults = results.filter(r => bigFiveNames.includes(r.assessment_type));
   const sortedBigFive = [...bigFiveResults].sort((a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
@@ -197,29 +251,64 @@ export default function HomeTab() {
     ? bigFiveResults
     : results.filter(r => r.assessment_type === selectedTimeline);
   const filteredTimelineResults = filterTo30DayWindows(timelineRawResults);
-  const chartData = filteredTimelineResults.map(result => {
-    const point: any = {
-      date: format(new Date(result.completed_at), 'MMM d'),
-      fullDate: format(new Date(result.completed_at), 'MMM d, yyyy')
-    };
-    if (selectedTimeline === 'Big Five') {
-      point.N = Math.round(result.scores.N || 0);
-      point.E = Math.round(result.scores.E || 0);
-      point.O = Math.round(result.scores.O || 0);
-      point.A = Math.round(result.scores.A || 0);
-      point.C = Math.round(result.scores.C || 0);
-    } else {
-      const scores = result.scores || {};
-      Object.keys(scores).forEach(key => {
-        point[key] = Math.round(scores[key]);
-      });
-    }
-    return point;
-  });
+  const hiddenSameMonthCount = timelineRawResults.length - filteredTimelineResults.length;
   const dataKeys = selectedTimeline === 'Big Five'
     ? ['O', 'C', 'E', 'A', 'N']
     : Object.keys(filteredTimelineResults[0]?.scores || {});
+  const hasConfidenceBand = dataKeys.some(key => semForKey(selectedTimeline, key) != null);
+  const chartData = filteredTimelineResults.map(result => {
+    const point: any = {
+      date: format(new Date(result.completed_at), 'MMM d'),
+      fullDate: format(new Date(result.completed_at), 'MMM d, yyyy'),
+      ts: new Date(result.completed_at).getTime(),
+    };
+    const scores = result.scores || {};
+    dataKeys.forEach(key => {
+      const value = Math.round((scores as Record<string, number>)[key] || 0);
+      point[key] = value;
+      const sem = semForKey(selectedTimeline, key);
+      if (sem != null) {
+        point[`${key}_band`] = [
+          Math.max(0, Math.round(value - sem)),
+          Math.min(100, Math.round(value + sem)),
+        ];
+      }
+    });
+    return point;
+  });
   const dynamicColors = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488'];
+
+  // Life events logged with year granularity are placed mid-year and only drawn
+  // when they fall inside the visible date range of the current trend series.
+  const timelineMinTs = chartData.length ? chartData[0].ts : 0;
+  const timelineMaxTs = chartData.length ? chartData[chartData.length - 1].ts : 0;
+  const timelineEvents = chartData.length > 1
+    ? lifeEvents
+        .map(e => ({ ...e, ts: new Date(e.year, 6, 1).getTime() }))
+        .filter(e => e.ts >= timelineMinTs && e.ts <= timelineMaxTs)
+    : [];
+
+  // Phase 2: "What changed, and is it meaningful?" — RCI-gated trait + state shifts.
+  const stateChanges = allAssessmentTypes
+    .filter(t => classifyAssessment(t)?.measurementClass === 'state')
+    .map(type => {
+      const series = filterTo30DayWindows(results.filter(r => r.assessment_type === type));
+      if (series.length < 2) return null;
+      const repr = (r: AssessmentResult) => {
+        const vals = Object.values(r.scores || {}).filter(v => typeof v === 'number') as number[];
+        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      };
+      const change = Math.round(repr(series[series.length - 1]) - repr(series[0]));
+      const c = classifyAssessment(type);
+      const { meaningful } = assessChange(change, c?.sd, c?.cronbachAlpha);
+      return { label: type, change, meaningful };
+    })
+    .filter((x): x is { label: string; change: number; meaningful: boolean | null } => x !== null);
+
+  const meaningfulTraitChanges = (comparison || []).filter(c => c.meaningful === true);
+  const meaningfulStateChanges = stateChanges.filter(c => c.meaningful === true);
+  const totalMeaningful = meaningfulTraitChanges.length + meaningfulStateChanges.length;
+  const hasRetestData = !!comparison || stateChanges.length > 0;
 
   const radarData = latest && latest.scores && latest.scores.O !== undefined ? [
     { trait: 'Openness', self: Math.round(latest.scores.O), peer: peerAverages ? Math.round(peerAverages.O) : null, fullMark: 100 },
@@ -247,12 +336,15 @@ export default function HomeTab() {
     fetchToken();
   }, [user?.id]);
 
+  // Never expose the raw user id in a shareable link — wait until the
+  // privacy-preserving token has loaded before showing/enabling the link.
   const feedbackUrl = feedbackToken 
     ? `${window.location.origin}/feedback/${feedbackToken}` 
-    : user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
+    : '';
 
   const copyLink = async () => {
     try {
+      if (!feedbackUrl) return;
       await navigator.clipboard.writeText(feedbackUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -444,6 +536,60 @@ export default function HomeTab() {
         )}
       </div>
 
+      {/* Phase 2: top "What changed, and is it meaningful?" RCI-gated summary */}
+      <Card className="bg-card border-border" data-testid="card-what-changed">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            What changed, and is it meaningful?
+          </CardTitle>
+          <CardDescription>
+            We only flag shifts large enough to exceed the measurement margin — smaller wiggles are likely noise.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!hasRetestData ? (
+            <p className="text-sm text-muted-foreground" data-testid="text-what-changed-empty">
+              Take an assessment a second time to see what's changed. We'll compare it against your baseline and tell you whether any movement is real.
+            </p>
+          ) : totalMeaningful === 0 ? (
+            <p className="text-sm text-muted-foreground" data-testid="text-what-changed-stable">
+              Nothing has moved beyond the measurement margin since your baseline — your results are stable.
+            </p>
+          ) : (
+            <div className="space-y-3" data-testid="list-what-changed">
+              <div className="flex flex-wrap gap-2">
+                {meaningfulTraitChanges.map((item) => (
+                  <Badge
+                    key={`trait-${item.trait}`}
+                    variant="secondary"
+                    className="gap-1 text-xs"
+                    data-testid={`badge-changed-${item.trait}`}
+                  >
+                    {item.change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {item.name} {item.change > 0 ? '+' : ''}{item.change}
+                  </Badge>
+                ))}
+                {meaningfulStateChanges.map((item) => (
+                  <Badge
+                    key={`state-${item.label}`}
+                    variant="secondary"
+                    className="gap-1 text-xs"
+                    data-testid={`badge-changed-state-${item.label}`}
+                  >
+                    {item.change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {item.label} {item.change > 0 ? '+' : ''}{item.change}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {totalMeaningful} meaningful shift{totalMeaningful !== 1 ? 's' : ''} detected. Everything else has held steady within the measurement margin.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="bg-card border-border">
@@ -491,10 +637,11 @@ export default function HomeTab() {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1 bg-muted/50 rounded-md px-4 py-2.5 text-sm text-muted-foreground truncate border border-border">
-              {feedbackUrl}
+              {feedbackUrl || 'Generating your secure link…'}
             </div>
             <Button 
               onClick={copyLink}
+              disabled={!feedbackUrl}
               className="gap-2 flex-shrink-0"
               data-testid="button-copy-link"
             >
@@ -517,7 +664,11 @@ export default function HomeTab() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section className="space-y-4" data-testid="section-your-profile">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Your Profile</h2>
+          <p className="text-sm text-muted-foreground mt-1">A snapshot of your stable traits as they stand today.</p>
+        </div>
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -608,16 +759,22 @@ export default function HomeTab() {
             )}
           </CardContent>
         </Card>
+      </section>
 
+      <section className="space-y-4" data-testid="section-your-journey">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground tracking-tight">Your Journey</h2>
+          <p className="text-sm text-muted-foreground mt-1">How your traits and states have moved over time. Life events you've logged appear as vertical markers.</p>
+        </div>
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
                 <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Activity className="w-5 h-5 text-primary" />
-                  Trait Timeline
+                  Trait &amp; State Timeline
                 </CardTitle>
-                <CardDescription>How your traits have evolved</CardDescription>
+                <CardDescription>How your traits and states have evolved</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Select value={selectedTimeline} onValueChange={setSelectedTimeline}>
@@ -640,12 +797,18 @@ export default function HomeTab() {
           </CardHeader>
           <CardContent className="pt-4">
             {chartData.length > 1 ? (
+              <>
               <div className="h-[280px]" data-testid="chart-timeline">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
-                      dataKey="date" 
+                      dataKey="ts" 
+                      type="number"
+                      scale="time"
+                      domain={['dataMin', 'dataMax']}
+                      ticks={chartData.map(d => d.ts)}
+                      tickFormatter={(v) => format(new Date(v), 'MMM d')}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                       tickLine={false}
                       axisLine={{ stroke: 'hsl(var(--border))' }}
@@ -676,6 +839,24 @@ export default function HomeTab() {
                     />
                     {dataKeys.map((key, index) => {
                       const strokeColor = selectedTimeline === 'Big Five' ? traitColors[key as TraitKey] : dynamicColors[index % dynamicColors.length];
+                      return (
+                        <Area
+                          key={`${key}_band`}
+                          type="monotone"
+                          dataKey={`${key}_band`}
+                          stroke="none"
+                          fill={strokeColor}
+                          fillOpacity={0.1}
+                          legendType="none"
+                          tooltipType="none"
+                          activeDot={false}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                      );
+                    })}
+                    {dataKeys.map((key, index) => {
+                      const strokeColor = selectedTimeline === 'Big Five' ? traitColors[key as TraitKey] : dynamicColors[index % dynamicColors.length];
                       const lineName = selectedTimeline === 'Big Five' ? traitNames[key as TraitKey] : key;
                       return (
                         <Line
@@ -690,9 +871,41 @@ export default function HomeTab() {
                         />
                       );
                     })}
-                  </LineChart>
+                    {timelineEvents.map((event, i) => (
+                      <ReferenceLine
+                        key={`event-${event.event_type}-${event.year}-${i}`}
+                        x={event.ts}
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeDasharray="4 4"
+                        strokeOpacity={0.6}
+                        label={{
+                          value: event.event_type,
+                          position: 'insideTopRight',
+                          fill: 'hsl(var(--muted-foreground))',
+                          fontSize: 10,
+                        }}
+                      />
+                    ))}
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
+              {(hasConfidenceBand || hiddenSameMonthCount > 0) && (
+                <div className="mt-3 space-y-1" data-testid="text-timeline-notes">
+                  {hasConfidenceBand && (
+                    <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                      <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                      The shaded band is the measurement margin (±1 standard error). Movement inside the band is likely noise, not real change.
+                    </p>
+                  )}
+                  {hiddenSameMonthCount > 0 && (
+                    <p className="text-xs text-muted-foreground flex items-start gap-1.5" data-testid="text-dedup-note">
+                      <Calendar className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                      Showing your most recent result per month ({hiddenSameMonthCount} earlier same-month result{hiddenSameMonthCount !== 1 ? 's' : ''} hidden).
+                    </p>
+                  )}
+                </div>
+              )}
+              </>
             ) : (
               <div className="h-[280px] flex items-center justify-center text-center">
                 <div>
@@ -703,7 +916,6 @@ export default function HomeTab() {
             )}
           </CardContent>
         </Card>
-      </div>
 
       {comparison && (
         <Card className="bg-card border-border" data-testid="card-comparison">
@@ -719,8 +931,14 @@ export default function HomeTab() {
             </div>
           </CardHeader>
           <CardContent>
+            <p className="text-xs text-muted-foreground flex items-start gap-1.5 mb-4" data-testid="text-comparison-note">
+              <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              Only changes large enough to exceed the measurement margin are marked as meaningful. Smaller shifts are likely measurement noise, not real change.
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {comparison.map((item) => (
+              {comparison.map((item) => {
+                const isMeaningful = item.meaningful === true;
+                return (
                 <div 
                   key={item.trait} 
                   className="p-4 rounded-lg bg-muted/50 border border-border"
@@ -738,7 +956,9 @@ export default function HomeTab() {
                     {item.change !== 0 ? (
                       <span 
                         className={`text-xs font-medium flex items-center gap-0.5 ${
-                          item.change > 0 ? 'text-green-600' : 'text-red-600'
+                          isMeaningful
+                            ? (item.change > 0 ? 'text-green-600' : 'text-red-600')
+                            : 'text-muted-foreground'
                         }`}
                         data-testid={`change-${item.trait}`}
                       >
@@ -759,12 +979,22 @@ export default function HomeTab() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Baseline: {item.baseline}%
                   </p>
+                  {item.change !== 0 && (
+                    <p
+                      className={`text-[11px] font-medium mt-1.5 ${isMeaningful ? 'text-primary' : 'text-muted-foreground'}`}
+                      data-testid={`meaningful-${item.trait}`}
+                    >
+                      {isMeaningful ? 'Meaningful change' : 'Within measurement noise'}
+                    </p>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
+      </section>
     </div>
   );
 }

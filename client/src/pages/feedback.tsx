@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Leaf, Loader2, ArrowLeft, ArrowRight, CheckCircle2, Heart } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { likertScale, ATTENTION_CHECK } from '@shared/peer-feedback-questions';
 import Footer from '@/components/footer';
 
 interface Question {
@@ -18,14 +19,6 @@ interface Question {
   trait: string;
   keyed: '+' | '-';
 }
-
-const likertScale = [
-  { value: 1, label: "Strongly Disagree" },
-  { value: 2, label: "Disagree" },
-  { value: 3, label: "Neutral" },
-  { value: 4, label: "Agree" },
-  { value: 5, label: "Strongly Agree" },
-];
 
 type FeedbackState = 'intro' | 'taking' | 'identity' | 'success';
 
@@ -37,6 +30,7 @@ export default function FeedbackPage() {
   const [peerName, setPeerName] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
+  const [attentionResponse, setAttentionResponse] = useState<number | null>(null);
 
   const questionsPerPage = 10;
 
@@ -109,6 +103,34 @@ export default function FeedbackPage() {
   const getCompletionPercentage = () => {
     if (questions.length === 0) return 0;
     return Math.round((Object.keys(responses).length / questions.length) * 100);
+  };
+
+  // Detect straight-lining: identical raw response to every item. Because the
+  // form mixes positively- and negatively-keyed items, a genuine respondent
+  // should not give the same answer to all of them.
+  const isStraightLining = () => {
+    const vals = questions
+      .map(q => responses[String(q.id)])
+      .filter((v): v is number => v !== undefined);
+    if (vals.length < questions.length || vals.length === 0) return false;
+    return new Set(vals).size === 1;
+  };
+
+  // Gate that runs when the respondent finishes the last page of items.
+  const handleFinishQuestions = () => {
+    if (attentionResponse !== ATTENTION_CHECK.expected) {
+      alert(
+        "Attention check: please re-read the highlighted quality-control item and select the requested option before continuing."
+      );
+      return;
+    }
+    if (isStraightLining()) {
+      const proceed = window.confirm(
+        "It looks like you gave the same answer to every question. Honest, varied answers help the most. Continue anyway?"
+      );
+      if (!proceed) return;
+    }
+    setState('identity');
   };
 
   const handleSubmit = () => {
@@ -335,6 +357,45 @@ export default function FeedbackPage() {
               </CardContent>
             </Card>
 
+            {isLastPage && (
+              <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex gap-3">
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400 min-w-[2rem]">!</span>
+                    <p className="text-foreground font-medium" data-testid="text-attention-check">
+                      {ATTENTION_CHECK.text}
+                    </p>
+                  </div>
+                  <RadioGroup
+                    value={attentionResponse?.toString() || ''}
+                    onValueChange={(val) => setAttentionResponse(parseInt(val))}
+                    className="flex flex-wrap gap-2 pl-9"
+                  >
+                    {likertScale.map((option) => (
+                      <div key={option.value} className="flex items-center">
+                        <RadioGroupItem
+                          value={option.value.toString()}
+                          id={`attn-${option.value}`}
+                          className="sr-only"
+                        />
+                        <Label
+                          htmlFor={`attn-${option.value}`}
+                          className={`px-3 py-2 rounded-md text-sm cursor-pointer transition-colors border ${
+                            attentionResponse === option.value
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                          }`}
+                          data-testid={`radio-attn-${option.value}`}
+                        >
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex items-center justify-between gap-4 mt-6">
               <Button
                 variant="outline"
@@ -348,8 +409,8 @@ export default function FeedbackPage() {
 
               {isLastPage ? (
                 <Button
-                  onClick={() => setState('identity')}
-                  disabled={!canProceed() || completionPct < 100}
+                  onClick={handleFinishQuestions}
+                  disabled={!canProceed() || completionPct < 100 || attentionResponse === null}
                   className="gap-2"
                   data-testid="button-continue-to-identity"
                 >

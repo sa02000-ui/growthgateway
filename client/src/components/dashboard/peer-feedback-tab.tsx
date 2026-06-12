@@ -55,9 +55,10 @@ export default function PeerFeedbackTab() {
     fetchToken();
   }, [user?.id]);
 
+  // Never expose the raw user id in a shareable link — wait for the secure token.
   const feedbackUrl = feedbackToken 
     ? `${window.location.origin}/feedback/${feedbackToken}` 
-    : user?.id ? `${window.location.origin}/feedback/${user.id}` : '';
+    : '';
   // Only count feedback with valid scores (completed submissions)
   const completedFeedback = feedbackList.filter(fb => fb.scores && Object.keys(fb.scores).length > 0);
   const completedCount = completedFeedback.length;
@@ -92,6 +93,7 @@ export default function PeerFeedbackTab() {
 
   const handleCopyLink = async () => {
     try {
+      if (!feedbackUrl) return;
       await navigator.clipboard.writeText(feedbackUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -150,6 +152,14 @@ export default function PeerFeedbackTab() {
   };
 
   const handleSendInvites = async () => {
+    if (!feedbackUrl) {
+      toast({
+        title: 'Link not ready',
+        description: 'Your secure feedback link is still being generated. Please try again in a moment.',
+        variant: 'destructive',
+      });
+      return;
+    }
     const validEmails = inviteEmails.filter(e => e.trim() && e.includes('@'));
     if (validEmails.length === 0) {
       toast({
@@ -363,10 +373,11 @@ export default function PeerFeedbackTab() {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="flex-1 bg-muted/50 rounded-md px-4 py-2.5 text-sm text-muted-foreground truncate border border-border">
-              {feedbackUrl}
+              {feedbackUrl || 'Generating your secure link…'}
             </div>
             <Button 
               onClick={handleCopyLink}
+              disabled={!feedbackUrl}
               className="gap-2 flex-shrink-0"
               data-testid="button-copy-link-bottom"
             >

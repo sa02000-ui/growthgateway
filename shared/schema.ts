@@ -331,6 +331,11 @@ export const assessmentsLibrary = pgTable("assessments_library", {
   inputType: varchar("input_type").notNull().default('likert_5'),
   traitConfig: jsonb("trait_config"),
   isActive: varchar("is_active").notNull().default('true'),
+  measurementClass: varchar("measurement_class").notNull().default('trait'),
+  retestIntervalDays: integer("retest_interval_days"),
+  oneTime: varchar("one_time").notNull().default('false'),
+  cronbachAlpha: real("cronbach_alpha"),
+  sd: real("sd"),
 });
 
 export const insertAssessmentsLibrarySchema = createInsertSchema(assessmentsLibrary).omit({

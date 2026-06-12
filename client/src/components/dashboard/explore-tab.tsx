@@ -24,7 +24,6 @@ interface Assessment {
   scientificSource?: {
     name: string;
     reliability: string;
-    validityScore: number;
   };
 }
 
@@ -39,8 +38,7 @@ const assessments: Assessment[] = [
     available: true,
     scientificSource: {
       name: 'International Personality Item Pool',
-      reliability: "Cronbach's α: 0.85-0.92",
-      validityScore: 95,
+      reliability: "Internal reliability (Cronbach's α): 0.85–0.92",
     },
   },
   {
@@ -193,10 +191,6 @@ export default function ExploreTab() {
                         <span className="flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-green-600" />
                           {assessment.scientificSource.reliability}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-green-600" />
-                          Validity: {assessment.scientificSource.validityScore}%
                         </span>
                       </div>
                     </div>

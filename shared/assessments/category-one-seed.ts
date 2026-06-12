@@ -13,6 +13,9 @@ export interface AssessmentSeedData {
   scoringType: ScoringType;
   inputType: InputType;
   traitConfig: TraitConfig;
+  measurementClass: 'trait' | 'state';
+  retestIntervalDays: number;
+  oneTime?: boolean;
   questions: QuestionSeedData[];
 }
 
@@ -71,6 +74,8 @@ export const BIG_FIVE_TRAIT_CONFIG: TraitConfig = {
 
 export const IPIP_NEO_120: AssessmentSeedData = {
   slug: 'ipip-neo-120',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
   category: 'Who Am I',
   name: 'IPIP-NEO-120',
   popularEquivalent: 'Similar to MBTI / 16 Personalities',
@@ -223,6 +228,8 @@ export const PVQ_VALUES_TRAIT_CONFIG: TraitConfig = {
 
 export const SCHWARTZ_PVQ_21: AssessmentSeedData = {
   slug: 'schwartz-pvq-21',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
   category: 'Who Am I',
   name: 'Schwartz Portrait Values (PVQ)',
   popularEquivalent: 'Similar to Enneagram',
@@ -274,6 +281,8 @@ export const DARK_TRIAD_TRAIT_CONFIG: TraitConfig = {
 
 export const SHORT_DARK_TRIAD_SD3: AssessmentSeedData = {
   slug: 'short-dark-triad-sd3',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
   category: 'Who Am I',
   name: 'Short Dark Triad (SD3)',
   popularEquivalent: 'Dark Personality Assessment',

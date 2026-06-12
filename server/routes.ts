@@ -99,6 +99,9 @@ export async function registerRoutes(
         scoring_type: a.scoringType,
         input_type: a.inputType,
         trait_config: a.traitConfig,
+        measurement_class: a.measurementClass,
+        retest_interval_days: a.retestIntervalDays,
+        one_time: a.oneTime === true,
         is_active: true,
       });
     }
@@ -119,7 +122,10 @@ export async function registerRoutes(
         input_type: c.input_type,
         trait_config: c.trait_config,
         cronbach_alpha: c.cronbach_alpha,
-        validity_score: c.validity_score,
+        measurement_class: c.measurement_class,
+        retest_interval_days: c.retest_interval_days,
+        sd: c.sd,
+        one_time: false,
         is_active: true,
       });
     }

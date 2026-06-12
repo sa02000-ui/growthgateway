@@ -44,13 +44,23 @@ export const peerQuestions: PeerQuestion[] = [
   { id: 30, text: "They do just enough work to get by.", trait: "C", keyed: "-" },
 ];
 
+// Standardized agree/disagree Likert scale, shared by the peer-feedback form
+// and any matched self mini-form so both are scored on the same anchors.
 export const likertScale = [
-  { value: 1, label: "Very Inaccurate" },
-  { value: 2, label: "Moderately Inaccurate" },
-  { value: 3, label: "Neither" },
-  { value: 4, label: "Moderately Accurate" },
-  { value: 5, label: "Very Accurate" },
+  { value: 1, label: "Strongly Disagree" },
+  { value: 2, label: "Disagree" },
+  { value: 3, label: "Neutral" },
+  { value: 4, label: "Agree" },
+  { value: 5, label: "Strongly Agree" },
 ];
+
+// Instructed-response attention check. Its id is outside the real item id range
+// so calculatePeerScores ignores it; it is validated on the client only.
+export const ATTENTION_CHECK = {
+  id: 9999,
+  text: "For quality control, please select \u201CDisagree\u201D for this item.",
+  expected: 2,
+};
 
 export const traitNames: Record<TraitKey, string> = {
   N: "Neuroticism",

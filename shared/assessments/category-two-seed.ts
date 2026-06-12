@@ -13,6 +13,9 @@ export interface AssessmentSeedData {
   scoringType: ScoringType;
   inputType: InputType;
   traitConfig: TraitConfig;
+  measurementClass: 'trait' | 'state';
+  retestIntervalDays: number;
+  oneTime?: boolean;
   questions: QuestionSeedData[];
 }
 
@@ -38,6 +41,9 @@ export const COGNITIVE_TRAIT_CONFIG: TraitConfig = {
 
 export const ICAR_16: AssessmentSeedData = {
   slug: 'icar-16',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
+  oneTime: true,
   category: 'How I Think',
   name: 'ICAR-16 Cognitive Assessment',
   popularEquivalent: 'Similar to IQ Tests',
@@ -287,6 +293,8 @@ export const GRIT_TRAIT_CONFIG: TraitConfig = {
 
 export const GRIT_SCALE_8: AssessmentSeedData = {
   slug: 'grit-s-8',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
   category: 'How I Think',
   name: 'Short Grit Scale (Grit-S)',
   popularEquivalent: 'Perseverance Assessment',

@@ -13,6 +13,9 @@ export interface AssessmentSeedData {
   scoringType: ScoringType;
   inputType: InputType;
   traitConfig: TraitConfig;
+  measurementClass: 'trait' | 'state';
+  retestIntervalDays: number;
+  oneTime?: boolean;
   questions: QuestionSeedData[];
 }
 
@@ -40,6 +43,8 @@ export const RIASEC_TRAIT_CONFIG: TraitConfig = {
 
 export const RIASEC_30: AssessmentSeedData = {
   slug: 'onet-riasec-30',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
   category: 'How I Interact',
   name: 'O*NET Interest Profiler (Mini)',
   popularEquivalent: 'Holland Career Test',
@@ -96,6 +101,8 @@ export const TEIQUE_TRAIT_CONFIG: TraitConfig = {
 
 export const TEIQUE_SF_30: AssessmentSeedData = {
   slug: 'teique-sf-30',
+  measurementClass: 'trait',
+  retestIntervalDays: 365,
   category: 'How I Interact',
   name: 'TEIQue-SF (Emotional Intelligence)',
   popularEquivalent: 'EQ Assessment',
