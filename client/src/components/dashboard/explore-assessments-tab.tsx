@@ -26,14 +26,19 @@ import {
   History,
   Info,
   Trophy,
-  Target
+  Target,
+  Repeat,
+  Compass,
+  Anchor,
+  Activity,
+  LayoutGrid
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth-context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import type { StoredAssessmentResult } from '@shared/schema';
-import { isOneTimeAssessment } from '@shared/reliable-change';
+import { classifyAssessment, isOneTimeAssessment } from '@shared/reliable-change';
 
 interface LibraryAssessment {
   id: string;
@@ -218,6 +223,58 @@ const assessmentMeta: Record<string, { displayName: string; popularName?: string
 
 const categoryOrder = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'];
 
+type CatalogView = 'cadence' | 'theme';
+
+const cadenceConfig: Record<'foundations' | 'checkins', { name: string; subtitle: string; icon: typeof Brain; description: string; color: string; bgColor: string; borderColor: string; badgeColor: string }> = {
+  foundations: {
+    name: 'Foundations',
+    subtitle: 'Take once',
+    icon: Anchor,
+    description: 'Who you are at your core — personality, values, reasoning, and interests. Take these once; they rarely change.',
+    color: 'text-slate-700 dark:text-slate-400',
+    bgColor: 'bg-slate-50 dark:bg-slate-950/40',
+    borderColor: 'border-slate-200 dark:border-slate-800',
+    badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300',
+  },
+  checkins: {
+    name: 'Check-ins',
+    subtitle: 'Revisit over time',
+    icon: Activity,
+    description: 'How you are doing right now — mood, stress, well-being, and self-belief. Revisit these regularly to track change.',
+    color: 'text-emerald-700 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
+  },
+};
+
+const RETEST_LABELS: Record<number, string> = {
+  7: 'Weekly',
+  14: 'Every 2 weeks',
+  30: 'Monthly',
+  90: 'Every few months',
+  365: 'Once a year',
+};
+
+function getCadenceInfo(slugOrName: string | undefined) {
+  const c = classifyAssessment(slugOrName);
+  if (!c) return null;
+  if (c.oneTime) {
+    return { freq: 'Take once', changes: false, note: 'Measures a stable ability — taken once; retaking mainly reflects practice.' };
+  }
+  if (c.measurementClass === 'trait') {
+    return { freq: 'Take once', changes: false, note: 'Reflects stable traits — take once; an optional re-check after a year or a major life change is plenty.' };
+  }
+  return {
+    freq: RETEST_LABELS[c.retestIntervalDays] || `Every ${c.retestIntervalDays} days`,
+    changes: true,
+    note: 'Captures how you feel now — expected to change over time, so it is worth revisiting.',
+  };
+}
+
+// The three assessments that give a new user the strongest starting picture.
+const STARTER_SLUGS = ['ipip-neo-120', 'schwartz-pvq-21', 'who-5'];
+
 type ViewState = 'library' | 'taking' | 'results' | 'history';
 
 export default function ExploreAssessmentsTab() {
@@ -233,6 +290,7 @@ export default function ExploreAssessmentsTab() {
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
   const [currentAssessment, setCurrentAssessment] = useState<AssessmentData | null>(null);
   const [loadingAssessment, setLoadingAssessment] = useState(false);
+  const [catalogView, setCatalogView] = useState<CatalogView>('cadence');
 
   const questionsPerPage = 10;
 
@@ -268,10 +326,23 @@ export default function ExploreAssessmentsTab() {
   };
 
   const groupedAssessments = categoryOrder.map(category => ({
-    category,
+    key: category,
     config: categoryConfig[category],
     assessments: libraryAssessments.filter(a => a.category === category),
   })).filter(group => group.assessments.length > 0);
+
+  // Cadence-first grouping derived from each assessment's measurement class:
+  // "Foundations" = stable traits (take once), "Check-ins" = states (revisit).
+  // Anything unclassified falls back into Foundations so nothing disappears.
+  const traitAssessments = libraryAssessments.filter(a => classifyAssessment(a.slug || a.name)?.measurementClass === 'trait');
+  const stateAssessments = libraryAssessments.filter(a => classifyAssessment(a.slug || a.name)?.measurementClass === 'state');
+  const unclassifiedAssessments = libraryAssessments.filter(a => !classifyAssessment(a.slug || a.name));
+  const cadenceGroups = [
+    { key: 'foundations', config: cadenceConfig.foundations, assessments: [...traitAssessments, ...unclassifiedAssessments] },
+    { key: 'checkins', config: cadenceConfig.checkins, assessments: stateAssessments },
+  ].filter(group => group.assessments.length > 0);
+
+  const displayGroups = catalogView === 'cadence' ? cadenceGroups : groupedAssessments;
 
   const submitMutation = useMutation({
     mutationFn: async (data: { assessmentId: string; userId: string; responses: Record<string, number | string> }) => {
@@ -972,6 +1043,183 @@ export default function ExploreAssessmentsTab() {
     );
   }
 
+  const renderAssessmentCard = (assessment: LibraryAssessment, accentColor: string, borderColor: string) => {
+    const lastTaken = getLastTaken(assessment.name);
+    const historyCount = getHistoryCount(assessment.name);
+    const oneTimeLocked = isOneTimeAssessment(assessment.slug || assessment.name) && !!lastTaken;
+    const meta = assessmentMeta[assessment.slug || ''];
+    const displayName = meta?.displayName || assessment.name;
+    const popularName = meta?.popularName;
+    const scientificRef = meta?.scientificRef;
+    const adaptedFrom = meta?.adaptedFrom;
+    const enhancedDescription = meta?.description || assessment.description;
+    const cadence = getCadenceInfo(assessment.slug || assessment.name);
+
+    return (
+      <Card
+        key={assessment.id}
+        className={`bg-card border ${borderColor}/50`}
+        data-testid={`card-assessment-${assessment.id}`}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <CardTitle className="text-base font-semibold text-foreground leading-snug" data-testid={`text-name-${assessment.id}`}>
+                {displayName}
+              </CardTitle>
+              {popularName && (
+                <p className={`text-xs font-medium mt-0.5 ${accentColor}`} data-testid={`text-popular-${assessment.id}`}>
+                  {popularName}
+                </p>
+              )}
+              <CardDescription className="mt-1.5 text-sm">
+                {enhancedDescription}
+              </CardDescription>
+            </div>
+            {scientificRef && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="flex-shrink-0 w-7 h-7 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-colors" data-testid={`button-info-${assessment.id}`}>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-[320px] p-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      <span className="text-xs font-semibold">Scientific Reference</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{scientificRef}</p>
+                    {adaptedFrom && (
+                      <p className="text-xs text-muted-foreground/80 leading-relaxed italic" data-testid={`text-adapted-${assessment.id}`}>
+                        Adapted from the {adaptedFrom}. Item wording may differ from the original; reliability figures refer to the source instrument.
+                      </p>
+                    )}
+                    <Badge variant="outline" className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Peer Reviewed
+                    </Badge>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {assessment.question_count && (
+              <Badge variant="secondary" className="text-xs">
+                {assessment.question_count} questions
+              </Badge>
+            )}
+            {assessment.estimated_time && (
+              <Badge variant="secondary" className="text-xs">
+                {assessment.estimated_time}
+              </Badge>
+            )}
+            {cadence && (
+              <Badge variant="outline" className="text-xs gap-1" title={cadence.note} data-testid={`badge-cadence-${assessment.id}`}>
+                <Repeat className="w-3 h-3" />
+                {cadence.freq}
+              </Badge>
+            )}
+            {cadence && (
+              <Badge
+                variant="outline"
+                className={`text-xs ${cadence.changes ? 'text-emerald-700 border-emerald-200 dark:text-emerald-300 dark:border-emerald-800' : 'text-slate-600 border-slate-200 dark:text-slate-400 dark:border-slate-700'}`}
+                title={cadence.note}
+                data-testid={`badge-stability-${assessment.id}`}
+              >
+                {cadence.changes ? 'Changes over time' : 'Stable over time'}
+              </Badge>
+            )}
+            {lastTaken && (
+              <Badge variant="outline" className="text-xs gap-1">
+                <Clock className="w-3 h-3" />
+                Last: {lastTaken.toLocaleDateString()}
+              </Badge>
+            )}
+          </div>
+
+          <div className="pt-2 flex gap-2">
+            <Button
+              onClick={() => handleStartClick(assessment.id, assessment.name)}
+              className="flex-1 gap-2"
+              disabled={oneTimeLocked}
+              data-testid={`button-start-${assessment.id}`}
+            >
+              <Play className="w-4 h-4" />
+              {oneTimeLocked ? 'Completed' : (lastTaken ? 'Retake Assessment' : 'Start Assessment')}
+            </Button>
+            {historyCount > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setState('history')}
+                className="gap-2"
+                data-testid={`button-history-${assessment.id}`}
+              >
+                <History className="w-4 h-4" />
+                History ({historyCount})
+              </Button>
+            )}
+          </div>
+          {oneTimeLocked && (
+            <p className="text-xs text-muted-foreground flex items-start gap-1.5" data-testid={`text-onetime-${assessment.id}`}>
+              <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              This is a measure of stable ability — retaking it mainly reflects practice and memory, not real change, so it's taken once. View your result in History.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderStarterHere = () => {
+    const starters = STARTER_SLUGS
+      .map(slug => libraryAssessments.find(a => a.slug === slug))
+      .filter((a): a is LibraryAssessment => !!a);
+    if (starters.length === 0) return null;
+    return (
+      <Card className="border-primary/20 bg-primary/5" data-testid="card-start-here">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Compass className="w-5 h-5 text-primary" />
+            Start here
+          </CardTitle>
+          <CardDescription>
+            New here? These three give you the strongest foundation — your core personality, what drives you, and a quick well-being check-in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {starters.map((assessment, i) => {
+            const meta = assessmentMeta[assessment.slug || ''];
+            const name = meta?.displayName || assessment.name;
+            const lastTaken = getLastTaken(assessment.name);
+            return (
+              <button
+                key={assessment.slug}
+                onClick={() => handleStartClick(assessment.id, assessment.name)}
+                className="text-left rounded-lg border border-border bg-card hover:border-primary/40 transition-colors p-3 flex flex-col gap-1"
+                data-testid={`button-starter-${assessment.slug}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-semibold flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm font-medium text-foreground leading-tight">{name}</span>
+                </div>
+                <span className="text-xs text-muted-foreground pl-7">
+                  {assessment.estimated_time ? `${assessment.estimated_time} · ` : ''}
+                  {lastTaken ? 'Completed — retake' : 'Recommended first'}
+                </span>
+              </button>
+            );
+          })}
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -1000,7 +1248,7 @@ export default function ExploreAssessmentsTab() {
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      ) : groupedAssessments.length === 0 ? (
+      ) : displayGroups.length === 0 ? (
         <Card className="bg-card border-border">
           <CardContent className="p-8 text-center">
             <Brain className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
@@ -1009,143 +1257,61 @@ export default function ExploreAssessmentsTab() {
           </CardContent>
         </Card>
       ) : (
-        groupedAssessments.map((group) => {
-          const CategoryIcon = group.config.icon;
-          return (
-            <div key={group.category} className="space-y-4">
-              <div className={`flex items-center gap-4 p-4 rounded-xl ${group.config.bgColor} border ${group.config.borderColor}`}>
-                <div className={`w-12 h-12 rounded-xl ${group.config.badgeColor} flex items-center justify-center`}>
-                  <CategoryIcon className="w-6 h-6" />
+        <>
+          {renderStarterHere()}
+
+          <div className="flex items-center gap-2 flex-wrap" data-testid="catalog-view-toggle">
+            <span className="text-sm text-muted-foreground mr-1">Organize by:</span>
+            <Button
+              size="sm"
+              variant={catalogView === 'cadence' ? 'default' : 'outline'}
+              onClick={() => setCatalogView('cadence')}
+              className="gap-1.5"
+              data-testid="button-view-cadence"
+            >
+              <Repeat className="w-3.5 h-3.5" />
+              Rhythm
+            </Button>
+            <Button
+              size="sm"
+              variant={catalogView === 'theme' ? 'default' : 'outline'}
+              onClick={() => setCatalogView('theme')}
+              className="gap-1.5"
+              data-testid="button-view-theme"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Theme
+            </Button>
+          </div>
+
+          {displayGroups.map((group) => {
+            const GroupIcon = group.config.icon;
+            return (
+              <div key={group.key} className="space-y-4">
+                <div className={`flex items-center gap-4 p-4 rounded-xl ${group.config.bgColor} border ${group.config.borderColor}`}>
+                  <div className={`w-12 h-12 rounded-xl ${group.config.badgeColor} flex items-center justify-center`}>
+                    <GroupIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className={`text-xl font-bold ${group.config.color}`} data-testid={`text-category-${group.key}`}>
+                      {group.config.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">{group.config.description}</p>
+                  </div>
+                  <Badge variant="outline" className={`ml-auto text-xs ${group.config.badgeColor} border-0`}>
+                    {group.assessments.length} test{group.assessments.length !== 1 ? 's' : ''}
+                  </Badge>
                 </div>
-                <div>
-                  <h2 className={`text-xl font-bold ${group.config.color}`} data-testid={`text-category-${group.category}`}>
-                    {group.config.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{group.config.description}</p>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {group.assessments.map((assessment) =>
+                    renderAssessmentCard(assessment, group.config.color, group.config.borderColor)
+                  )}
                 </div>
-                <Badge variant="outline" className={`ml-auto text-xs ${group.config.badgeColor} border-0`}>
-                  {group.assessments.length} test{group.assessments.length !== 1 ? 's' : ''}
-                </Badge>
               </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {group.assessments.map((assessment) => {
-                  const lastTaken = getLastTaken(assessment.name);
-                  const historyCount = getHistoryCount(assessment.name);
-                  const oneTimeLocked = isOneTimeAssessment(assessment.slug || assessment.name) && !!lastTaken;
-                  const meta = assessmentMeta[assessment.slug || ''];
-                  const displayName = meta?.displayName || assessment.name;
-                  const popularName = meta?.popularName;
-                  const scientificRef = meta?.scientificRef;
-                  const adaptedFrom = meta?.adaptedFrom;
-                  const enhancedDescription = meta?.description || assessment.description;
-
-                  return (
-                    <Card 
-                      key={assessment.id} 
-                      className={`bg-card border ${group.config.borderColor}/50`}
-                      data-testid={`card-assessment-${assessment.id}`}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <CardTitle className="text-base font-semibold text-foreground leading-snug" data-testid={`text-name-${assessment.id}`}>
-                              {displayName}
-                            </CardTitle>
-                            {popularName && (
-                              <p className={`text-xs font-medium mt-0.5 ${group.config.color}`} data-testid={`text-popular-${assessment.id}`}>
-                                {popularName}
-                              </p>
-                            )}
-                            <CardDescription className="mt-1.5 text-sm">
-                              {enhancedDescription}
-                            </CardDescription>
-                          </div>
-                          {scientificRef && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button className="flex-shrink-0 w-7 h-7 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-colors" data-testid={`button-info-${assessment.id}`}>
-                                  <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="max-w-[320px] p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <BookOpen className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                                    <span className="text-xs font-semibold">Scientific Reference</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground leading-relaxed">{scientificRef}</p>
-                                  {adaptedFrom && (
-                                    <p className="text-xs text-muted-foreground/80 leading-relaxed italic" data-testid={`text-adapted-${assessment.id}`}>
-                                      Adapted from the {adaptedFrom}. Item wording may differ from the original; reliability figures refer to the source instrument.
-                                    </p>
-                                  )}
-                                  <Badge variant="outline" className="gap-1 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Peer Reviewed
-                                  </Badge>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {assessment.question_count && (
-                            <Badge variant="secondary" className="text-xs">
-                              {assessment.question_count} questions
-                            </Badge>
-                          )}
-                          {assessment.estimated_time && (
-                            <Badge variant="secondary" className="text-xs">
-                              {assessment.estimated_time}
-                            </Badge>
-                          )}
-                          {lastTaken && (
-                            <Badge variant="outline" className="text-xs gap-1">
-                              <Clock className="w-3 h-3" />
-                              Last: {lastTaken.toLocaleDateString()}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="pt-2 flex gap-2">
-                          <Button 
-                            onClick={() => handleStartClick(assessment.id, assessment.name)} 
-                            className="flex-1 gap-2" 
-                            disabled={oneTimeLocked}
-                            data-testid={`button-start-${assessment.id}`}
-                          >
-                            <Play className="w-4 h-4" />
-                            {oneTimeLocked ? 'Completed' : (lastTaken ? 'Retake Assessment' : 'Start Assessment')}
-                          </Button>
-                          {historyCount > 0 && (
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setState('history')}
-                              className="gap-2"
-                              data-testid={`button-history-${assessment.id}`}
-                            >
-                              <History className="w-4 h-4" />
-                              History ({historyCount})
-                            </Button>
-                          )}
-                        </div>
-                        {oneTimeLocked && (
-                          <p className="text-xs text-muted-foreground flex items-start gap-1.5" data-testid={`text-onetime-${assessment.id}`}>
-                            <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                            This is a measure of stable ability — retaking it mainly reflects practice and memory, not real change, so it's taken once. View your result in History.
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })
+            );
+          })}
+        </>
       )}
 
       <Dialog open={showProfileConfirm} onOpenChange={setShowProfileConfirm}>

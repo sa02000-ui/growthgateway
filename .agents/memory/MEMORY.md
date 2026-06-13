@@ -2,3 +2,4 @@
 - [Assessment response & score types](assessment-response-types.md) — two distinct AssessmentResponses types (schema=numeric for IPIP, scoring-engine=number|string for dynamic tests); don't unify or you break ICAR scoring.
 - [Likert label builders duplicated](routes-likert-label-builders.md) — routes.ts derives Likert option labels in TWO paths (static + DB); add new scales/slug overrides to both, slug branch before generic.
 - [Seed slug matching](seed-slug-matching.md) — assessments-library seed must match existing rows by exact slug, never fuzzy name (fuzzy name once corrupted SWLS via Cantril); question insert is exists-any, won't backfill.
+- [Measurement class source](measurement-class-source.md) — trait/state class + retake cadence must come from classifyAssessment() in shared/reliable-change.ts, NOT the API measurement_class field (not seeded in DB).
