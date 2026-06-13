@@ -20,5 +20,14 @@ DDL on Replit Postgres (Supabase is external, anon/service key, no reliable DDL)
   shared table.
 - The dedup guards (`server/peer-feedback-guards.ts`) `isDuplicateSubmission` /
   `rememberSubmission` are async — await them in routes.
+- Expired-row cleanup is DB-gated, not process-local: `spam_protection_cleanup`
+  (single CHECK id=1 row) stores `last_run`; an atomic
+  `UPDATE ... WHERE last_run <= now() - interval RETURNING id` lets exactly one
+  instance claim a purge per interval (others get rowCount 0). Trigger via
+  fire-and-forget `triggerSpamProtectionCleanup()` from hot paths
+  (`increment`, `isDuplicateSubmission`); a per-process `setInterval` is only a
+  best-effort idle backup. **Why:** the old setInterval/per-submission delete
+  died with a single process; the gate must live in the DB so any live instance
+  serving traffic keeps both tables pruned.
 - Note: the express-rate-limit `Store` interface has an optional `prefix` field;
   don't name a private member `prefix` (TS conflict) — use `keyPrefix`.

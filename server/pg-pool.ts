@@ -28,6 +28,21 @@ export function ensureInfraTables(): Promise<void> {
           reset_time TIMESTAMPTZ NOT NULL
         )
       `);
+      // Single-row table tracking the last time expired spam-protection rows
+      // were purged. Lives in the DB (not process memory) so the cleanup
+      // schedule is shared across instances and survives any single process
+      // dying. CHECK (id = 1) enforces exactly one row.
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS spam_protection_cleanup (
+          id INTEGER PRIMARY KEY DEFAULT 1,
+          last_run TIMESTAMPTZ NOT NULL DEFAULT to_timestamp(0),
+          CONSTRAINT spam_protection_cleanup_single_row CHECK (id = 1)
+        )
+      `);
+      await pool.query(`
+        INSERT INTO spam_protection_cleanup (id) VALUES (1)
+        ON CONFLICT (id) DO NOTHING
+      `);
     })();
   }
   return ready;

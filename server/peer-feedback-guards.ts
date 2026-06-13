@@ -1,5 +1,6 @@
 import { ATTENTION_CHECK } from "@shared/peer-feedback-questions";
 import { pool, ensureInfraTables } from "./pg-pool";
+import { triggerSpamProtectionCleanup } from "./spam-protection-cleanup";
 
 // Server-side quality and anti-spam guards for the public peer-feedback submit
 // endpoint. The client enforces the same attention check / straight-lining
@@ -29,8 +30,10 @@ export function dedupKey(
 
 export async function isDuplicateSubmission(key: string): Promise<boolean> {
   await ensureInfraTables();
-  // Opportunistic cleanup so the table can't grow unbounded.
-  await pool.query("DELETE FROM peer_feedback_dedup WHERE expires_at <= now()");
+  // Opportunistically purge expired rows. DB-gated and fire-and-forget so it
+  // runs at most once per interval across instances and never blocks the
+  // duplicate check (which already ignores expired rows via expires_at > now()).
+  triggerSpamProtectionCleanup();
   const result = await pool.query(
     "SELECT 1 FROM peer_feedback_dedup WHERE key = $1 AND expires_at > now()",
     [key],

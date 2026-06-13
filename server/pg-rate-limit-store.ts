@@ -1,5 +1,9 @@
 import type { Store, Options, ClientRateLimitInfo } from "express-rate-limit";
 import { pool, ensureInfraTables } from "./pg-pool";
+import {
+  triggerSpamProtectionCleanup,
+  startSpamProtectionCleanupTimer,
+} from "./spam-protection-cleanup";
 
 // express-rate-limit Store backed by Replit PostgreSQL so rate-limit counters
 // survive restarts and are shared across instances (the default MemoryStore is
@@ -7,21 +11,6 @@ import { pool, ensureInfraTables } from "./pg-pool";
 // unique prefix so their keys never collide in the shared table.
 
 let prefixCounter = 0;
-
-// Single shared cleanup loop removes expired rows so the table can't grow
-// unbounded. One interval covers all store instances.
-let cleanupStarted = false;
-function startCleanup() {
-  if (cleanupStarted) return;
-  cleanupStarted = true;
-  const timer = setInterval(() => {
-    pool
-      .query("DELETE FROM rate_limit_store WHERE reset_time <= now()")
-      .catch((err) => console.error("[rate-limit] cleanup error:", err));
-  }, 10 * 60 * 1000);
-  // Don't keep the process alive just for cleanup.
-  if (typeof timer.unref === "function") timer.unref();
-}
 
 export class PostgresRateLimitStore implements Store {
   private windowMs = 60 * 1000;
@@ -43,7 +32,7 @@ export class PostgresRateLimitStore implements Store {
   init(options: Options): void {
     this.windowMs = options.windowMs;
     void ensureInfraTables();
-    startCleanup();
+    startSpamProtectionCleanupTimer();
   }
 
   private prefixed(key: string): string {
@@ -52,6 +41,10 @@ export class PostgresRateLimitStore implements Store {
 
   async increment(key: string): Promise<ClientRateLimitInfo> {
     await ensureInfraTables();
+    // Opportunistically purge expired rows (DB-gated so it actually runs at
+    // most once per interval across instances). Fire-and-forget: never blocks
+    // the rate-limit decision.
+    triggerSpamProtectionCleanup();
     const ms = this.windowMs;
     const result = await pool.query<{ hits: number; reset_time: Date }>(
       `INSERT INTO rate_limit_store (key, hits, reset_time)
