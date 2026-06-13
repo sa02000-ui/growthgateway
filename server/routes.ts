@@ -1043,7 +1043,7 @@ export async function registerRoutes(
       // client (per target + IP + response fingerprint), within a short window.
       const ip = req.ip || "unknown";
       const submissionKey = dedupKey(userId, ip, responses as Record<string, unknown>);
-      if (isDuplicateSubmission(submissionKey)) {
+      if (await isDuplicateSubmission(submissionKey)) {
         return res.status(429).json({ error: "Duplicate submission detected. This feedback was already received." });
       }
 
@@ -1143,7 +1143,7 @@ export async function registerRoutes(
         });
       }
 
-      rememberSubmission(submissionKey);
+      await rememberSubmission(submissionKey);
       res.json({ success: true, feedbackId: data.id });
     } catch (error) {
       console.error('Peer feedback submission error:', error);

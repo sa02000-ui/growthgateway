@@ -4,3 +4,4 @@
 - [Seed slug matching](seed-slug-matching.md) — assessments-library seed must match existing rows by exact slug, never fuzzy name (fuzzy name once corrupted SWLS via Cantril); question insert is exists-any, won't backfill.
 - [Measurement class source](measurement-class-source.md) — trait/state class + retake cadence must come from classifyAssessment() in shared/reliable-change.ts, NOT the API measurement_class field (not seeded in DB).
 - [Peer feedback instruments & invites](peer-feedback-instruments-invites.md) — Big Five vs 360 share peer_feedback (filter instrument!=='peer-360' for NEOAC avgs in 3 places); one-time invites need burn-before-insert (no Supabase txns).
+- [Spam-protection durable store](spam-protection-store.md) — peer-feedback dedup + all rate limiters persist in Replit Postgres (DATABASE_URL), not Supabase; infra tables auto-created via ensureInfraTables().

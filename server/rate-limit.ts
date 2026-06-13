@@ -1,4 +1,10 @@
 import rateLimit from "express-rate-limit";
+import { PostgresRateLimitStore } from "./pg-rate-limit-store";
+
+// All limiters use a PostgreSQL-backed store so their counters survive server
+// restarts and are shared across instances (the default MemoryStore is
+// per-process and resets on restart). Each limiter needs its own store instance
+// so their keyspaces stay isolated.
 
 // General API limiter — protects every /api route from abuse.
 export const apiLimiter = rateLimit({
@@ -6,6 +12,7 @@ export const apiLimiter = rateLimit({
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PostgresRateLimitStore(),
   message: { error: "Too many requests, please try again later." },
 });
 
@@ -15,6 +22,7 @@ export const aiLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PostgresRateLimitStore(),
   message: { error: "Too many AI requests, please slow down." },
 });
 
@@ -24,6 +32,7 @@ export const writeLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PostgresRateLimitStore(),
   message: { error: "Too many submissions, please slow down." },
 });
 
@@ -36,6 +45,7 @@ export const openFeedbackLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PostgresRateLimitStore(),
   message: {
     error:
       "Too many feedback submissions from this network. Please use a personal invite link or try again later.",
