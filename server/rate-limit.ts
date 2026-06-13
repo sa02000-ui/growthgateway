@@ -26,3 +26,22 @@ export const writeLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many submissions, please slow down." },
 });
+
+// Strict per-IP limiter for the OPEN (reusable, non-invited) peer-feedback link.
+// One-time invited submissions are self-limiting (the token can only be used
+// once), so they are skipped here. This blunts the open link as a spam vector
+// while keeping invited feedback unrestricted.
+export const openFeedbackLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error:
+      "Too many feedback submissions from this network. Please use a personal invite link or try again later.",
+  },
+  skip: (req) => {
+    const token = (req.body as { inviteToken?: unknown } | undefined)?.inviteToken;
+    return typeof token === "string" && token.trim().length > 0;
+  },
+});

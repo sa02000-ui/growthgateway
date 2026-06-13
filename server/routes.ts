@@ -15,7 +15,14 @@ import { registerShareResultsRoutes } from "./share-results";
 import { registerProfileRoutes } from "./profile-routes";
 import { calculateAssessmentScore, type QuestionData } from "@shared/scoring-engine";
 import { requireAuth, getUserId } from "./auth";
-import { writeLimiter } from "./rate-limit";
+import { writeLimiter, openFeedbackLimiter } from "./rate-limit";
+import {
+  dedupKey,
+  isDuplicateSubmission,
+  rememberSubmission,
+  passesAttentionCheck,
+  isStraightLined,
+} from "./peer-feedback-guards";
 
 // Import all assessment seed data
 import { IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3 } from "@shared/assessments/category-one-seed";
@@ -1008,10 +1015,10 @@ export async function registerRoutes(
   });
 
   // Submit peer feedback (public)
-  app.post("/api/peer-feedback/:userId", writeLimiter, async (req, res) => {
+  app.post("/api/peer-feedback/:userId", writeLimiter, openFeedbackLimiter, async (req, res) => {
     try {
       const { userId } = req.params;
-      const { responses, peerName, isAnonymous, inviteToken } = req.body;
+      const { responses, peerName, isAnonymous, inviteToken, attentionResponse } = req.body;
       let { relationship, instrument } = req.body;
 
       if (!userId) {
@@ -1020,6 +1027,24 @@ export async function registerRoutes(
 
       if (!responses || typeof responses !== 'object') {
         return res.status(400).json({ error: "responses are required" });
+      }
+
+      // Server-side quality gates (client enforces these too, but they're
+      // bypassable). Enforced here so the aggregated self-vs-peer averages stay
+      // trustworthy even against direct API calls.
+      if (!passesAttentionCheck(attentionResponse)) {
+        return res.status(400).json({ error: "Attention check failed. Please answer the quality-control item as instructed." });
+      }
+      if (isStraightLined(responses)) {
+        return res.status(400).json({ error: "Responses look like straight-lining (identical answer to every item). Please provide honest, varied answers." });
+      }
+
+      // Block rapid duplicate re-submissions of identical content from the same
+      // client (per target + IP + response fingerprint), within a short window.
+      const ip = req.ip || "unknown";
+      const submissionKey = dedupKey(userId, ip, responses as Record<string, unknown>);
+      if (isDuplicateSubmission(submissionKey)) {
+        return res.status(429).json({ error: "Duplicate submission detected. This feedback was already received." });
       }
 
       // One-time invite: validate before doing anything else, and let the
@@ -1118,6 +1143,7 @@ export async function registerRoutes(
         });
       }
 
+      rememberSubmission(submissionKey);
       res.json({ success: true, feedbackId: data.id });
     } catch (error) {
       console.error('Peer feedback submission error:', error);

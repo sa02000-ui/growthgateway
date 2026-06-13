@@ -134,6 +134,7 @@ export default function FeedbackPage() {
       relationship: RelationshipValue;
       instrument: Instrument;
       inviteToken: string | null;
+      attentionResponse: number | null;
     }) => {
       const res = await apiRequest('POST', `/api/peer-feedback/${resolvedUserId}`, data);
       if (!res.ok) {
@@ -202,6 +203,7 @@ export default function FeedbackPage() {
       relationship,
       instrument,
       inviteToken,
+      attentionResponse,
     });
   };
 
