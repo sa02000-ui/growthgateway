@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -180,57 +180,55 @@ export default function ProfileTab() {
     }
   }, [user]);
 
-  useEffect(() => {
-    async function fetchProfile() {
-      if (!user?.id) {
-        setLoadingProfile(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/profile/${user.id}`, { headers: await getAuthHeaders() });
-        if (response.ok) {
-          const { profile: data, lifeEvents: eventsData, history: historyData } = await response.json();
-          if (historyData) setProfileHistory(historyData);
-
-          if (data) {
-            setProfile({
-              maritalStatus: data.marital_status || '',
-              childrenCount: data.children_count?.toString() || '',
-              youngestChildAge: data.youngest_child_age || '',
-              birthCountry: data.birth_country || '',
-              yearsInRegion: data.years_in_region || '',
-              culturalBackground: data.cultural_background || '',
-              profession: data.profession || '',
-              industry: data.industry || '',
-              educationLevel: data.education_level || '',
-              fieldOfStudy: data.field_of_study || '',
-              householdIncome: data.household_income || '',
-              parentalOccupation: data.parental_occupation || '',
-              parentalIncome: data.parental_income || '',
-            });
-          }
-
-          if (eventsData && eventsData.length > 0) {
-            setLifeEvents({
-              events: eventsData.map((e: { event_type: string; year: string; significance: number }) => ({
-                type: e.event_type || '',
-                year: e.year || '',
-                significance: e.significance || 5,
-              })),
-              otherEvent: '',
-            });
-          }
-        }
-      } catch (err) {
-        console.log('Profile not found, will create on save');
-      } finally {
-        setLoadingProfile(false);
-      }
+  const loadProfile = useCallback(async (showLoader = true) => {
+    if (!user?.id) {
+      if (showLoader) setLoadingProfile(false);
+      return;
     }
 
-    fetchProfile();
+    try {
+      const response = await fetch(`/api/profile/${user.id}`, { headers: await getAuthHeaders() });
+      if (response.ok) {
+        const { profile: data, lifeEvents: eventsData, history: historyData } = await response.json();
+        if (historyData) setProfileHistory(historyData);
+
+        if (data) {
+          setProfile({
+            maritalStatus: data.marital_status || '',
+            childrenCount: data.children_count?.toString() || '',
+            youngestChildAge: data.youngest_child_age || '',
+            birthCountry: data.birth_country || '',
+            yearsInRegion: data.years_in_region || '',
+            culturalBackground: data.cultural_background || '',
+            profession: data.profession || '',
+            industry: data.industry || '',
+            educationLevel: data.education_level || '',
+            fieldOfStudy: data.field_of_study || '',
+            householdIncome: data.household_income || '',
+            parentalOccupation: data.parental_occupation || '',
+            parentalIncome: data.parental_income || '',
+          });
+        }
+
+        setLifeEvents({
+          events: (eventsData || []).map((e: { event_type: string; year: string; significance: number }) => ({
+            type: e.event_type || '',
+            year: e.year || '',
+            significance: e.significance || 5,
+          })),
+          otherEvent: '',
+        });
+      }
+    } catch (err) {
+      console.log('Profile not found, will create on save');
+    } finally {
+      if (showLoader) setLoadingProfile(false);
+    }
   }, [user?.id]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handleSaveAccount = async () => {
     if (!user?.id || !supabase) return;
@@ -346,6 +344,8 @@ export default function ProfileTab() {
         title: 'Profile saved',
         description: 'Your demographic information has been updated and a snapshot has been recorded.',
       });
+
+      await loadProfile(false);
     } catch (error) {
       console.error('Error saving profile:', error);
       toast({
