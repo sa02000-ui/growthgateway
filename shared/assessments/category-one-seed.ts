@@ -233,7 +233,7 @@ export const SCHWARTZ_PVQ_21: AssessmentSeedData = {
   category: 'Who Am I',
   name: 'Schwartz Portrait Values (PVQ)',
   popularEquivalent: 'Similar to Enneagram',
-  scientificReference: 'Schwartz (1992)',
+  scientificReference: 'Schwartz et al. (2001)',
   description: 'Identifies your core drivers and motivations (e.g., Tradition, Power, Benevolence) rather than just behavior.',
   questionCount: 21,
   estimatedTime: '5-7 mins',
