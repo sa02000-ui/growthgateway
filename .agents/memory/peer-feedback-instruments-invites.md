@@ -45,6 +45,21 @@ creation goes through authenticated POST `/api/peer-invites`; public resolution
 through GET `/api/peer-invite/:token` returns no PII (just userId, relationship,
 instrument, status).
 
+## Invite emails are runtime-credentialed with a copy-link fallback
+POST `/api/peer-invites` accepts `recipients` (emails) → creates one single-use
+invite per recipient and emails each its own link server-side; a bare `count`
+still works as the legacy link-only path. Email creds are resolved at request
+time from EITHER the SendGrid connector proxy OR a `SENDGRID_API_KEY` secret
+(+ `INVITE_FROM_EMAIL` for the verified sender) — never stored in repo. When no
+provider is configured, the route returns the links and the UI shows copyable
+per-recipient links instead of failing.
+**Why:** the feature must work before any email provider is connected (users may
+decline the integration), and SendGrid rejects unverified senders.
+**Blocked:** persisting recipient email / sent-status onto the invite row for a
+dashboard "sent/pending/used per person" view needs a new `peer_invites` column,
+but external Supabase is no-DDL via the JS client — so status is only returned
+transiently in the response, not persisted.
+
 ## Matched self mini-form is app-only
 The "matched self-view" (30 "I…"-worded mirror of the peer items) is stored in
 `localStorage` under `matched-self:${userId}` — deliberately NO schema/table. It

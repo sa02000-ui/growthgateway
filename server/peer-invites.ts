@@ -3,6 +3,7 @@ import { supabase } from "./db";
 import { requireAuth, getUserId } from "./auth";
 import { writeLimiter } from "./rate-limit";
 import { relationshipValues } from "@shared/peer-feedback-questions";
+import { sendInviteEmail, isEmailConfigured } from "./email";
 import crypto from "crypto";
 
 const VALID_INSTRUMENTS = ["big-five", "peer-360"] as const;
@@ -26,6 +27,20 @@ function normalizeRelationship(value: unknown): string | null {
   return relationshipValues.includes(value as any) ? value : null;
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+// Build the public origin for invite links. Prefer a client-supplied origin
+// (validated), falling back to the proxy-aware request headers.
+function resolveOrigin(req: Request): string {
+  const bodyOrigin = typeof req.body?.origin === "string" ? req.body.origin.trim() : "";
+  if (/^https?:\/\/[^\s/]+$/.test(bodyOrigin)) return bodyOrigin.replace(/\/+$/, "");
+  const host = req.get("host") ?? "";
+  const proto = (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() || req.protocol || "https";
+  return `${proto}://${host}`;
+}
+
 export function inviteStatus(row: { used_at: string | null; expires_at: string | null }): "valid" | "used" | "expired" {
   if (row.used_at) return "used";
   if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return "expired";
@@ -37,9 +52,33 @@ export function registerPeerInviteRoutes(app: Express): void {
   app.post("/api/peer-invites", requireAuth, writeLimiter, async (req: Request, res: Response) => {
     try {
       const targetUserId = getUserId(req);
-      const count = Math.min(Math.max(parseInt(String(req.body?.count ?? 1), 10) || 1, 1), MAX_INVITES_PER_REQUEST);
       const instrument = normalizeInstrument(req.body?.instrument);
       const relationship = normalizeRelationship(req.body?.relationship);
+      const customMessage = typeof req.body?.message === "string" ? req.body.message : undefined;
+      const fromName =
+        typeof req.body?.fromName === "string" && req.body.fromName.trim()
+          ? req.body.fromName.trim()
+          : "Someone";
+
+      // When `recipients` (emails) are supplied we create one unique invite per
+      // recipient and email it server-side. Otherwise fall back to the legacy
+      // link-only flow driven by `count`.
+      const rawRecipients: unknown[] | null = Array.isArray(req.body?.recipients) ? req.body.recipients : null;
+      let recipients: string[] = [];
+      if (rawRecipients) {
+        const normalized: string[] = rawRecipients
+          .map((e) => String(e ?? "").trim().toLowerCase())
+          .filter((e) => isValidEmail(e));
+        recipients = Array.from(new Set(normalized)).slice(0, MAX_INVITES_PER_REQUEST);
+
+        if (recipients.length === 0) {
+          return res.status(400).json({ error: "No valid email addresses provided" });
+        }
+      }
+
+      const count = rawRecipients
+        ? recipients.length
+        : Math.min(Math.max(parseInt(String(req.body?.count ?? 1), 10) || 1, 1), MAX_INVITES_PER_REQUEST);
 
       const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
@@ -56,12 +95,45 @@ export function registerPeerInviteRoutes(app: Express): void {
         .insert(rows)
         .select("token, relationship, instrument, expires_at");
 
-      if (error) {
+      if (error || !data) {
         console.error("Peer invite creation error:", error);
         return res.status(500).json({ error: "Failed to create invites" });
       }
 
-      res.json({ invites: data });
+      // Legacy link-only flow: just return the freshly minted tokens.
+      if (!rawRecipients) {
+        return res.json({ invites: data });
+      }
+
+      // Email flow: send each recipient their own single-use link.
+      const origin = resolveOrigin(req);
+      const emailConfigured = await isEmailConfigured();
+
+      const invites = await Promise.all(
+        data.map(async (row, i) => {
+          const email = recipients[i];
+          const link = `${origin}/feedback/${row.token}`;
+          let sent = false;
+          let sendError: string | undefined = "Email delivery is not configured.";
+
+          if (emailConfigured) {
+            const result = await sendInviteEmail({ to: email, fromName, link, customMessage });
+            sent = result.sent;
+            sendError = result.error;
+          }
+
+          return { ...row, email, link, sent, error: sendError };
+        }),
+      );
+
+      const sentCount = invites.filter((i) => i.sent).length;
+
+      res.json({
+        invites,
+        emailConfigured,
+        sentCount,
+        failedCount: invites.length - sentCount,
+      });
     } catch (error) {
       console.error("Peer invite creation error:", error);
       res.status(500).json({ error: "Failed to create invites" });

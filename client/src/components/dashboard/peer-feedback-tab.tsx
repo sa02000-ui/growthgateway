@@ -40,6 +40,13 @@ interface PeerFeedbackItem {
   instrument: Instrument | null;
 }
 
+interface InviteResult {
+  email: string;
+  link: string;
+  sent: boolean;
+  error?: string;
+}
+
 function averageScores(rows: PeerFeedbackItem[], keys: readonly string[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const key of keys) {
@@ -62,6 +69,8 @@ export default function PeerFeedbackTab() {
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteInstrument, setInviteInstrument] = useState<Instrument>('big-five');
   const [sendingInvites, setSendingInvites] = useState(false);
+  const [inviteResults, setInviteResults] = useState<InviteResult[] | null>(null);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const [selfBigFive, setSelfBigFive] = useState<Record<string, number> | null>(null);
   const [matchedSelf, setMatchedSelf] = useState<Record<string, number> | null>(null);
@@ -218,7 +227,18 @@ export default function PeerFeedbackTab() {
     setInviteEmails(['']);
     setInviteMessage(defaultMessage);
     setInviteInstrument('big-five');
+    setInviteResults(null);
     setShowInviteModal(true);
+  };
+
+  const copyInviteLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLink(link);
+      setTimeout(() => setCopiedLink((cur) => (cur === link ? null : cur)), 2000);
+    } catch {
+      toast({ title: 'Could not copy', description: 'Please copy the link manually.', variant: 'destructive' });
+    }
   };
 
   const addEmailField = () => setInviteEmails([...inviteEmails, '']);
@@ -232,35 +252,57 @@ export default function PeerFeedbackTab() {
   };
 
   const handleSendInvites = async () => {
-    const validEmails = inviteEmails.filter((e) => e.trim() && e.includes('@'));
+    const validEmails = inviteEmails.map((e) => e.trim()).filter((e) => e && e.includes('@'));
     if (validEmails.length === 0) {
       toast({ title: 'No valid emails', description: 'Please enter at least one valid email address.', variant: 'destructive' });
       return;
     }
 
     setSendingInvites(true);
+    setInviteResults(null);
     try {
-      // Generate one one-time invite link per recipient.
+      // Server creates one single-use link per recipient and emails each one.
       const res = await fetch('/api/peer-invites', {
         method: 'POST',
         headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count: validEmails.length, instrument: inviteInstrument }),
+        body: JSON.stringify({
+          recipients: validEmails,
+          instrument: inviteInstrument,
+          message: inviteMessage,
+          fromName: userName,
+          origin: window.location.origin,
+        }),
       });
       if (!res.ok) throw new Error('Failed to create invites');
-      const { invites } = (await res.json()) as { invites: { token: string }[] };
+      const data = (await res.json()) as {
+        invites: InviteResult[];
+        emailConfigured: boolean;
+        sentCount: number;
+        failedCount: number;
+      };
 
-      const links = invites.map((inv) => `${window.location.origin}/feedback/${inv.token}`);
-      // Each recipient gets their own unique, single-use link.
-      const bodyLines = validEmails.map((email, i) => `${email}: ${links[i] ?? feedbackUrl}`).join('\n');
-      const emailBody = `${inviteMessage}\n\nEach person below has a unique, single-use feedback link:\n${bodyLines}`;
-      const mailtoLink = `mailto:${validEmails.join(',')}?subject=Request for Personality Feedback&body=${encodeURIComponent(emailBody)}`;
-      window.open(mailtoLink, '_blank');
-
-      toast({
-        title: 'One-time invites created!',
-        description: `${links.length} unique link(s) generated. Your email client will open to send them.`,
-      });
-      setShowInviteModal(false);
+      if (data.emailConfigured && data.failedCount === 0) {
+        toast({
+          title: 'Invites sent!',
+          description: `${data.sentCount} invitation${data.sentCount === 1 ? '' : 's'} emailed with a unique, single-use link.`,
+        });
+        setShowInviteModal(false);
+      } else {
+        // Graceful fallback: surface the links so they can be shared manually.
+        setInviteResults(data.invites);
+        if (!data.emailConfigured) {
+          toast({
+            title: 'Links ready — automatic email not set up',
+            description: 'Copy each link below to share it directly.',
+          });
+        } else {
+          toast({
+            title: `Sent ${data.sentCount} of ${data.invites.length}`,
+            description: 'Some emails could not be delivered. Copy the remaining links below.',
+            variant: 'destructive',
+          });
+        }
+      }
     } catch (err) {
       toast({
         title: 'Failed to create invites',
@@ -710,17 +752,50 @@ export default function PeerFeedbackTab() {
                 className="resize-none"
                 data-testid="textarea-invite-message"
               />
-              <p className="text-xs text-muted-foreground">A unique link for each recipient will be added to your message.</p>
+              <p className="text-xs text-muted-foreground">Each recipient is emailed their own unique, single-use link.</p>
             </div>
+
+            {inviteResults && inviteResults.length > 0 && (
+              <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-3" data-testid="section-invite-results">
+                <p className="text-sm font-medium text-foreground">Invite links</p>
+                {inviteResults.map((result) => (
+                  <div
+                    key={result.link}
+                    className="flex items-center justify-between gap-2 text-sm"
+                    data-testid={`row-invite-result-${result.email}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-foreground" data-testid={`text-invite-email-${result.email}`}>{result.email}</p>
+                      <span
+                        className={`text-xs ${result.sent ? 'text-primary' : 'text-muted-foreground'}`}
+                        data-testid={`status-invite-${result.email}`}
+                      >
+                        {result.sent ? 'Emailed' : result.error || 'Not sent — share link manually'}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 flex-shrink-0"
+                      onClick={() => copyInviteLink(result.link)}
+                      data-testid={`button-copy-invite-${result.email}`}
+                    >
+                      {copiedLink === result.link ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedLink === result.link ? 'Copied' : 'Copy link'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInviteModal(false)} data-testid="button-cancel-invite">
-              Cancel
+              {inviteResults ? 'Done' : 'Cancel'}
             </Button>
             <Button onClick={handleSendInvites} disabled={sendingInvites} className="gap-2" data-testid="button-send-invites">
               {sendingInvites ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-              Create &amp; Open Email
+              {inviteResults ? 'Resend' : 'Send Invites'}
             </Button>
           </DialogFooter>
         </DialogContent>
