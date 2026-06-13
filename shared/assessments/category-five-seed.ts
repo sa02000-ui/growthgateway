@@ -166,7 +166,9 @@ export const RSES_CONFIG = {
   retest_interval_days: 90,
   sd: 18,
   name: 'Self-Esteem Scale (RSES)',
-  category: 'How I Feel',
+  // Self-concept measure (not affect/well-being) → grouped under "Who Am I",
+  // but still state-classified so it appears in the Journey/time-series view.
+  category: 'Who Am I',
   description: 'A classic measure of overall self-worth and self-acceptance.',
   scientific_reference: 'Rosenberg (1965)',
   popular_equivalent: 'Self-Esteem Test',
@@ -206,7 +208,9 @@ export const GSE_CONFIG = {
   retest_interval_days: 90,
   sd: 18,
   name: 'General Self-Efficacy Scale (GSE)',
-  category: 'How I Feel',
+  // Self-concept measure (not affect/well-being) → grouped under "Who Am I",
+  // but still state-classified so it appears in the Journey/time-series view.
+  category: 'Who Am I',
   description: 'Measures your belief in your ability to cope with a broad range of demands and challenges.',
   scientific_reference: 'Schwarzer & Jerusalem (1995)',
   popular_equivalent: 'Confidence & Coping Test',

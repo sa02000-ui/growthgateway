@@ -154,21 +154,21 @@ export async function registerRoutes(
       }
       console.log('[Seed] Starting comprehensive database seed...');
       
-      // Check if questions already seeded
-      const { data: existingQuestions, error: checkError } = await supabase
+      // Build the set of assessments that already have questions so re-running the
+      // seed never duplicates questions — it only inserts questions for NEW
+      // assessments while still refreshing metadata on existing ones.
+      const { data: existingQ, error: checkError } = await supabase
         .from('assessment_questions')
-        .select('id')
-        .limit(1);
+        .select('assessment_id');
 
       if (checkError) {
         console.log('[Seed] Questions table check error (may not exist yet):', checkError.message);
       }
 
-      if (existingQuestions && existingQuestions.length > 0) {
-        return res.json({ message: "Already seeded with questions", count: existingQuestions.length });
-      }
-      
-      console.log('[Seed] No existing questions found, proceeding with seed...');
+      const assessmentsWithQuestions = new Set(
+        (existingQ || []).map((q: { assessment_id: string }) => q.assessment_id)
+      );
+      console.log(`[Seed] ${assessmentsWithQuestions.size} assessments already have questions; inserting questions only for new ones.`);
 
       // Build comprehensive seed data with all metadata
       const allAssessments = [
@@ -198,32 +198,24 @@ export async function registerRoutes(
       let totalQuestions = 0;
       let assessmentsUpdated = 0;
 
-      // Get all existing assessments for flexible matching
-      const { data: allExisting } = await supabase.from('assessments_library').select('id, name');
-      const existingMap = new Map((allExisting || []).map(a => [a.name.toLowerCase(), a]));
-      
-      // Flexible name matching function
-      const findAssessment = (seedName: string) => {
-        const lower = seedName.toLowerCase();
-        // Exact match
-        if (existingMap.has(lower)) return existingMap.get(lower);
-        // Keyword matching
-        const entries = Array.from(existingMap.entries());
-        for (const [key, val] of entries) {
-          if (lower.includes(key) || key.includes(lower.split(' ')[0])) return val;
-          // Match by key words
-          const seedWords = lower.split(/[\s\-()]+/).filter((w: string) => w.length > 2);
-          const dbWords = key.split(/[\s\-()]+/).filter((w: string) => w.length > 2);
-          const commonWords = seedWords.filter((w: string) => dbWords.includes(w));
-          if (commonWords.length >= 2) return val;
-        }
-        return null;
-      };
+      // Get all existing assessments and match strictly by slug. Slugs are unique
+      // and stable per assessment; the previous fuzzy name matching could collide
+      // distinct assessments (e.g. "Cantril ladder" matched "...with Life Scale")
+      // and overwrite the wrong row, so we never fall back to name matching.
+      const { data: allExisting } = await supabase.from('assessments_library').select('id, name, slug');
+      type ExistingAssessment = { id: string; name: string; slug: string | null };
+      const existingBySlug = new Map<string, ExistingAssessment>(
+        ((allExisting || []) as ExistingAssessment[])
+          .filter((a) => !!a.slug)
+          .map((a) => [a.slug as string, a])
+      );
+
+      const findBySlug = (slug: string) => existingBySlug.get(slug) || null;
 
       // Process category 1-3 assessments
       for (const assessment of allAssessments) {
-        // Find existing assessment by flexible name matching
-        const existing = findAssessment(assessment.name);
+        // Find existing assessment by exact slug
+        const existing = findBySlug(assessment.slug);
 
         let assessmentId: string;
 
@@ -274,32 +266,34 @@ export async function registerRoutes(
           } else continue;
         }
 
-        // Insert questions
-        const questionsToInsert = assessment.questions.map(q => ({
-          assessment_id: assessmentId,
-          question_number: q.questionNumber,
-          text: q.text,
-          trait_key: q.traitKey,
-          facet_key: q.facetKey || null,
-          sub_category: q.subCategory || null,
-          reverse_coded: q.reverseCoded,
-          correct_option: q.correctOption || null,
-          options: q.options || null,
-        }));
+        // Insert questions only if this assessment doesn't already have them.
+        if (!assessmentsWithQuestions.has(assessmentId)) {
+          const questionsToInsert = assessment.questions.map(q => ({
+            assessment_id: assessmentId,
+            question_number: q.questionNumber,
+            text: q.text,
+            trait_key: q.traitKey,
+            facet_key: q.facetKey || null,
+            sub_category: q.subCategory || null,
+            reverse_coded: q.reverseCoded,
+            correct_option: q.correctOption || null,
+            options: q.options || null,
+          }));
 
-        const { error: insertError } = await supabase
-          .from('assessment_questions')
-          .insert(questionsToInsert);
+          const { error: insertError } = await supabase
+            .from('assessment_questions')
+            .insert(questionsToInsert);
 
-        if (!insertError) {
-          totalQuestions += questionsToInsert.length;
+          if (!insertError) {
+            totalQuestions += questionsToInsert.length;
+          }
         }
       }
 
-      // Process category 4 assessments (different structure)
+      // Process category 4 & 5 assessments (different structure)
       for (const { config, questions } of category4Configs) {
-        // Find by flexible matching
-        const existing = findAssessment(config.name);
+        // Find existing assessment by exact slug
+        const existing = findBySlug(config.slug);
 
         let assessmentId: string;
 
@@ -349,25 +343,27 @@ export async function registerRoutes(
           } else continue;
         }
 
-        // Insert questions
-        const questionsToInsert = questions.map(q => ({
-          assessment_id: assessmentId,
-          question_number: q.question_number,
-          text: q.text,
-          trait_key: q.trait_key,
-          facet_key: null,
-          sub_category: null,
-          reverse_coded: q.reverse_coded,
-          correct_option: null,
-          options: null,
-        }));
+        // Insert questions only if this assessment doesn't already have them.
+        if (!assessmentsWithQuestions.has(assessmentId)) {
+          const questionsToInsert = questions.map(q => ({
+            assessment_id: assessmentId,
+            question_number: q.question_number,
+            text: q.text,
+            trait_key: q.trait_key,
+            facet_key: null,
+            sub_category: null,
+            reverse_coded: q.reverse_coded,
+            correct_option: null,
+            options: null,
+          }));
 
-        const { error: insertError } = await supabase
-          .from('assessment_questions')
-          .insert(questionsToInsert);
+          const { error: insertError } = await supabase
+            .from('assessment_questions')
+            .insert(questionsToInsert);
 
-        if (!insertError) {
-          totalQuestions += questionsToInsert.length;
+          if (!insertError) {
+            totalQuestions += questionsToInsert.length;
+          }
         }
       }
 
