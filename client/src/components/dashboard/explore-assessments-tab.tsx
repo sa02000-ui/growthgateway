@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -176,6 +177,42 @@ const assessmentMeta: Record<string, { displayName: string; popularName?: string
     popularName: 'Mental Wellness Assessment',
     scientificRef: 'Diener, E. et al. (2010). New well-being measures: Flourishing and positive and negative feelings. Social Indicators Research, 97(2), 143-156.',
     description: 'Measures self-perceived success in relationships, self-esteem, purpose, and optimism — how well you\'re thriving overall.',
+  },
+  'who-5': {
+    displayName: 'WHO-5 Well-Being Index',
+    popularName: 'Mood & Well-Being Check',
+    scientificRef: 'Topp, C.W. et al. (2015). The WHO-5 Well-Being Index: A systematic review of the literature. Psychotherapy and Psychosomatics, 84(3), 167-176.',
+    description: 'A short, widely used measure of your current psychological well-being over the past two weeks.',
+  },
+  'i-panas-sf': {
+    displayName: 'Positive & Negative Affect (I-PANAS-SF)',
+    popularName: 'Mood Balance Check',
+    scientificRef: 'Thompson, E.R. (2007). Development and validation of an internationally reliable short-form of the Positive and Negative Affect Schedule (PANAS). Journal of Cross-Cultural Psychology, 38(2), 227-242.',
+    description: 'A brief measure of your general balance of positive and negative emotion.',
+  },
+  'ucla-3': {
+    displayName: 'Loneliness Scale (UCLA-3)',
+    popularName: 'Social Connection Check',
+    scientificRef: 'Hughes, M.E. et al. (2004). A short scale for measuring loneliness in large surveys. Research on Aging, 26(6), 655-672.',
+    description: 'A brief measure of your current feelings of social connection and loneliness.',
+  },
+  'cantril-ladder': {
+    displayName: 'Life Evaluation Ladder (Cantril)',
+    popularName: 'Life Satisfaction Ladder',
+    scientificRef: 'Cantril, H. (1965). The Pattern of Human Concerns. Rutgers University Press.',
+    description: 'A single-item evaluation of where you feel your life stands right now, from worst to best possible life.',
+  },
+  'rses-10': {
+    displayName: 'Self-Esteem Scale (RSES)',
+    popularName: 'Self-Esteem Test',
+    scientificRef: 'Rosenberg, M. (1965). Society and the Adolescent Self-Image. Princeton University Press.',
+    description: 'A classic measure of your overall sense of self-worth and self-acceptance.',
+  },
+  'gse-10': {
+    displayName: 'General Self-Efficacy Scale (GSE)',
+    popularName: 'Confidence & Coping Test',
+    scientificRef: 'Schwarzer, R. & Jerusalem, M. (1995). Generalized Self-Efficacy Scale. In Measures in Health Psychology: A User\'s Portfolio. NFER-NELSON.',
+    description: 'Measures your belief in your ability to cope with a broad range of demands and challenges.',
   },
 };
 
@@ -373,6 +410,30 @@ export default function ExploreAssessmentsTab() {
               {option.label}
             </Button>
           ))}
+        </div>
+      );
+    }
+
+    if (inputType === 'ladder_0_10') {
+      const current = responses[String(question.questionNumber)];
+      const answered = current !== undefined;
+      return (
+        <div className="pl-9 space-y-3 max-w-md">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>0 — Worst possible life</span>
+            <span>Best possible life — 10</span>
+          </div>
+          <Slider
+            min={0}
+            max={10}
+            step={1}
+            value={[answered ? Number(current) : 5]}
+            onValueChange={(val) => handleResponse(question.questionNumber, val[0])}
+            data-testid={`slider-q${question.questionNumber}`}
+          />
+          <p className="text-sm text-center font-medium" data-testid={`text-ladder-value-${question.questionNumber}`}>
+            {answered ? `You selected: ${current}` : 'Drag the slider to choose a step (0–10)'}
+          </p>
         </div>
       );
     }

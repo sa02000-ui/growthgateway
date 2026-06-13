@@ -45,10 +45,14 @@ export interface AssessmentResult {
 
 function getMaxScaleValue(inputType: string): number {
   switch (inputType) {
+    case 'likert_3': return 3;
+    case 'likert_4': return 4;
     case 'likert_5': return 5;
     case 'likert_6': return 6;
     case 'likert_7': return 7;
     case 'likert_0_4': return 4;
+    case 'likert_0_5': return 5;
+    case 'ladder_0_10': return 10;
     case 'binary': return 1;
     default: return 5;
   }
@@ -57,6 +61,8 @@ function getMaxScaleValue(inputType: string): number {
 function getMinScaleValue(inputType: string): number {
   switch (inputType) {
     case 'likert_0_4': return 0;
+    case 'likert_0_5': return 0;
+    case 'ladder_0_10': return 0;
     default: return 1;
   }
 }

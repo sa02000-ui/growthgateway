@@ -25,6 +25,14 @@ import {
   BRS_CONFIG, BRS_QUESTIONS,
   FS_CONFIG, FS_QUESTIONS
 } from "@shared/assessments/category-four-seed";
+import {
+  WHO_5_CONFIG, WHO_5_QUESTIONS,
+  I_PANAS_SF_CONFIG, I_PANAS_SF_QUESTIONS,
+  UCLA_3_CONFIG, UCLA_3_QUESTIONS,
+  CANTRIL_CONFIG, CANTRIL_QUESTIONS,
+  RSES_CONFIG, RSES_QUESTIONS,
+  GSE_CONFIG, GSE_QUESTIONS
+} from "@shared/assessments/category-five-seed";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -55,7 +63,10 @@ export async function registerRoutes(
       IPIP_NEO_120, SCHWARTZ_PVQ_21, SHORT_DARK_TRIAD_SD3,
       ICAR_16, GRIT_SCALE_8, RIASEC_30, TEIQUE_SF_30,
     ];
-    const cat4Configs = [PSS_10_CONFIG, SWLS_CONFIG, BRS_CONFIG, FS_CONFIG];
+    const cat4Configs = [
+      PSS_10_CONFIG, SWLS_CONFIG, BRS_CONFIG, FS_CONFIG,
+      WHO_5_CONFIG, I_PANAS_SF_CONFIG, UCLA_3_CONFIG, CANTRIL_CONFIG, RSES_CONFIG, GSE_CONFIG,
+    ];
     
     // Use slug as deterministic UUID seed
     const generateId = (slug: string) => {
@@ -170,12 +181,18 @@ export async function registerRoutes(
         TEIQUE_SF_30,
       ];
 
-      // Category 4 assessments have different structure
+      // Category 4 & 5 assessments have the snake_case config structure
       const category4Configs = [
         { config: PSS_10_CONFIG, questions: PSS_10_QUESTIONS },
         { config: SWLS_CONFIG, questions: SWLS_QUESTIONS },
         { config: BRS_CONFIG, questions: BRS_QUESTIONS },
         { config: FS_CONFIG, questions: FS_QUESTIONS },
+        { config: WHO_5_CONFIG, questions: WHO_5_QUESTIONS },
+        { config: I_PANAS_SF_CONFIG, questions: I_PANAS_SF_QUESTIONS },
+        { config: UCLA_3_CONFIG, questions: UCLA_3_QUESTIONS },
+        { config: CANTRIL_CONFIG, questions: CANTRIL_QUESTIONS },
+        { config: RSES_CONFIG, questions: RSES_QUESTIONS },
+        { config: GSE_CONFIG, questions: GSE_QUESTIONS },
       ];
 
       let totalQuestions = 0;
@@ -377,6 +394,12 @@ export async function registerRoutes(
       { config: SWLS_CONFIG, questions: SWLS_QUESTIONS },
       { config: BRS_CONFIG, questions: BRS_QUESTIONS },
       { config: FS_CONFIG, questions: FS_QUESTIONS },
+      { config: WHO_5_CONFIG, questions: WHO_5_QUESTIONS },
+      { config: I_PANAS_SF_CONFIG, questions: I_PANAS_SF_QUESTIONS },
+      { config: UCLA_3_CONFIG, questions: UCLA_3_QUESTIONS },
+      { config: CANTRIL_CONFIG, questions: CANTRIL_QUESTIONS },
+      { config: RSES_CONFIG, questions: RSES_QUESTIONS },
+      { config: GSE_CONFIG, questions: GSE_QUESTIONS },
     ];
     
     const generateId = (slug: string) => {
@@ -455,6 +478,12 @@ export async function registerRoutes(
             { value: 3, label: 'Somewhat Like Me' }, { value: 4, label: 'Mostly Like Me' },
             { value: 5, label: 'Very Much Like Me' },
           ];
+        } else if (inputType === 'likert_5' && aSlug === 'i-panas-sf') {
+          likertScale = [
+            { value: 1, label: 'Not at all' }, { value: 2, label: 'A little' },
+            { value: 3, label: 'Moderately' }, { value: 4, label: 'Quite a bit' },
+            { value: 5, label: 'Extremely' },
+          ];
         } else if (inputType === 'likert_5') {
           likertScale = [
             { value: 1, label: 'Very Inaccurate' }, { value: 2, label: 'Moderately Inaccurate' },
@@ -473,6 +502,27 @@ export async function registerRoutes(
             { value: 1, label: 'Not like me at all' }, { value: 2, label: 'Not like me' },
             { value: 3, label: 'A little like me' }, { value: 4, label: 'Somewhat like me' },
             { value: 5, label: 'Like me' }, { value: 6, label: 'Very much like me' },
+          ];
+        } else if (inputType === 'likert_0_5') {
+          likertScale = [
+            { value: 0, label: 'At no time' }, { value: 1, label: 'Some of the time' },
+            { value: 2, label: 'Less than half the time' }, { value: 3, label: 'More than half the time' },
+            { value: 4, label: 'Most of the time' }, { value: 5, label: 'All of the time' },
+          ];
+        } else if (inputType === 'likert_4' && aSlug === 'gse-10') {
+          likertScale = [
+            { value: 1, label: 'Not at all true' }, { value: 2, label: 'Hardly true' },
+            { value: 3, label: 'Moderately true' }, { value: 4, label: 'Exactly true' },
+          ];
+        } else if (inputType === 'likert_4') {
+          likertScale = [
+            { value: 1, label: 'Strongly Disagree' }, { value: 2, label: 'Disagree' },
+            { value: 3, label: 'Agree' }, { value: 4, label: 'Strongly Agree' },
+          ];
+        } else if (inputType === 'likert_3') {
+          likertScale = [
+            { value: 1, label: 'Hardly ever' }, { value: 2, label: 'Some of the time' },
+            { value: 3, label: 'Often' },
           ];
         } else if (inputType === 'likert_0_4') {
           likertScale = [
@@ -552,6 +602,14 @@ export async function registerRoutes(
           { value: 4, label: 'Mostly Like Me' },
           { value: 5, label: 'Very Much Like Me' },
         ];
+      } else if (inputType === 'likert_5' && slug === 'i-panas-sf') {
+        likertScale = [
+          { value: 1, label: 'Not at all' },
+          { value: 2, label: 'A little' },
+          { value: 3, label: 'Moderately' },
+          { value: 4, label: 'Quite a bit' },
+          { value: 5, label: 'Extremely' },
+        ];
       } else if (inputType === 'likert_5') {
         likertScale = [
           { value: 1, label: 'Very Inaccurate' },
@@ -578,6 +636,35 @@ export async function registerRoutes(
           { value: 4, label: 'Somewhat Like Me' },
           { value: 5, label: 'Like Me' },
           { value: 6, label: 'Very Much Like Me' },
+        ];
+      } else if (inputType === 'likert_0_5') {
+        likertScale = [
+          { value: 0, label: 'At no time' },
+          { value: 1, label: 'Some of the time' },
+          { value: 2, label: 'Less than half the time' },
+          { value: 3, label: 'More than half the time' },
+          { value: 4, label: 'Most of the time' },
+          { value: 5, label: 'All of the time' },
+        ];
+      } else if (inputType === 'likert_4' && slug === 'gse-10') {
+        likertScale = [
+          { value: 1, label: 'Not at all true' },
+          { value: 2, label: 'Hardly true' },
+          { value: 3, label: 'Moderately true' },
+          { value: 4, label: 'Exactly true' },
+        ];
+      } else if (inputType === 'likert_4') {
+        likertScale = [
+          { value: 1, label: 'Strongly Disagree' },
+          { value: 2, label: 'Disagree' },
+          { value: 3, label: 'Agree' },
+          { value: 4, label: 'Strongly Agree' },
+        ];
+      } else if (inputType === 'likert_3') {
+        likertScale = [
+          { value: 1, label: 'Hardly ever' },
+          { value: 2, label: 'Some of the time' },
+          { value: 3, label: 'Often' },
         ];
       } else if (inputType === 'likert_0_4') {
         likertScale = [

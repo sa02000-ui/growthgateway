@@ -1,0 +1,142 @@
+CONTEXT
+Add the following new assessments as seed files, matching the existing pattern in 
+shared/assessments/category-four-seed.ts (snake_case config object + a QUESTIONS array of 
+{question_number, text, trait_key, reverse_coded}). Each must include the measurementClass and 
+retestIntervalDays fields from Phase 1, and display internal reliability (cronbach_alpha) as 
+"internal reliability". Use the EXACT item wording and reverse-coding below — do not paraphrase; the 
+wording/coding is part of each instrument's validity.
+
+FIRST, add these new input_type scales (the server builds the Likert labels per input_type in 
+server/routes.ts, and the scoring engine in shared/scoring-engine.ts must handle them):
+- likert_0_5  (WHO-5): 0=At no time, 1=Some of the time, 2=Less than half the time, 
+  3=More than half the time, 4=Most of the time, 5=All of the time
+- likert_4    (RSES, GSE): 1..4 (labels per test below)
+- likert_3    (UCLA-3): 1=Hardly ever, 2=Some of the time, 3=Often
+- ladder_0_10 (Cantril): single slider 0..10
+
+============================================================
+1. WHO-5 Wellbeing Index   [state, retestIntervalDays: 14]
+============================================================
+slug: who-5 | category: "How I Feel" | popular_equivalent: "Wellbeing check-in"
+scientific_reference: "WHO (1998)" | cronbach_alpha: 0.84 | input_type: likert_0_5
+scoring_algorithm: summation, then TRANSFORM raw (0–25) to 0–100 by multiplying by 4. Display 0–100.
+Higher = better wellbeing. Flag: score ≤ 50 = low wellbeing; raw ≤ 13 suggests a wellbeing screen — 
+show the Phase 6 supportive resources, gently. All items positively keyed (reverse_coded: false).
+Prompt stem: "Over the last two weeks..."
+  1. I have felt cheerful and in good spirits.
+  2. I have felt calm and relaxed.
+  3. I have felt active and vigorous.
+  4. I woke up feeling fresh and rested.
+  5. My daily life has been filled with things that interest me.
+Single trait: { key: 'WB', name: 'Wellbeing' }. LICENSE: free, no permission needed; cite WHO.
+
+============================================================
+2. I-PANAS-SF (Affect)   [state, retestIntervalDays: 7]
+============================================================
+slug: i-panas-sf | category: "How I Feel" | popular_equivalent: "Mood check-in"
+scientific_reference: "Thompson (2007)" | input_type: likert_5
+Scale labels (1..5): 1=Never, 2=Rarely, 3=Sometimes, 4=Often, 5=Always
+Prompt stem: "Thinking about the past week, to what extent do you feel..."
+TWO scores (multi_category). trait_config traits:
+  { key: 'PA', name: 'Positive Affect', color: '#10b981' },
+  { key: 'NA', name: 'Negative Affect', color: '#ef4444' }
+Score each as the SUM of its 5 items (range 5–25). No reverse coding; items load on their trait.
+cronbach_alpha: PA 0.78 / NA 0.76 (note both). Higher PA = good; higher NA = strain.
+Items are adjectives:
+  Positive Affect (trait_key 'PA'): Active, Alert, Attentive, Determined, Inspired
+  Negative Affect (trait_key 'NA'): Afraid, Ashamed, Hostile, Nervous, Upset
+LICENSE: I-PANAS-SF is the free short form; OK to use with citation.
+
+============================================================
+3. UCLA-3 Loneliness   [state, retestIntervalDays: 30]
+============================================================
+slug: ucla-3 | category: "How I Feel" | popular_equivalent: "Connection check-in"
+scientific_reference: "Hughes et al. (2004)" | cronbach_alpha: 0.72 | input_type: likert_3
+scoring_algorithm: summation (range 3–9). Higher = lonelier. Flag ≥ 6 = elevated loneliness (show 
+supportive framing). All items positively keyed to loneliness (reverse_coded: false).
+Prompt stem: "How often do you feel..."
+  1. that you lack companionship?
+  2. left out?
+  3. isolated from others?
+Single trait: { key: 'LONE', name: 'Loneliness' }. LICENSE: free to use with citation.
+
+============================================================
+4. Cantril Ladder   [state, retestIntervalDays: 7]
+============================================================
+slug: cantril-ladder | category: "How I Feel" | popular_equivalent: "Life satisfaction (quick)"
+scientific_reference: "Cantril (1965)" | input_type: ladder_0_10 | single item (no alpha)
+scoring: raw 0–10. Higher = better. Lowest-friction weekly check-in.
+Single item text: "Imagine a ladder with steps numbered 0 at the bottom to 10 at the top. The top 
+represents the best possible life for you, the bottom the worst possible life for you. On which step 
+do you feel you personally stand at this time?"
+Single trait: { key: 'LIFE', name: 'Life Evaluation' }. LICENSE: public domain.
+
+============================================================
+5. Rosenberg Self-Esteem Scale (RSES)   [state, retestIntervalDays: 90 — slow-changing growth lever]
+============================================================
+slug: rses | category: "Who Am I" | popular_equivalent: "Self-esteem"
+scientific_reference: "Rosenberg (1965)" | cronbach_alpha: 0.88 | input_type: likert_4
+Scale labels (1..4): 1=Strongly Disagree, 2=Disagree, 3=Agree, 4=Strongly Agree
+scoring: '+' items score 1..4; '−' items are reverse_coded (5 minus response). Sum all 10 → range 
+10–40. Higher = higher self-esteem. Flag < 25 = lower self-esteem (gentle, growth-framed).
+  1. (+) I feel that I am a person of worth, at least on an equal plane with others.
+  2. (+) I feel that I have a number of good qualities.
+  3. (−) All in all, I am inclined to feel that I am a failure.
+  4. (+) I am able to do things as well as most other people.
+  5. (−) I feel I do not have much to be proud of.
+  6. (+) I take a positive attitude toward myself.
+  7. (+) On the whole, I am satisfied with myself.
+  8. (−) I wish I could have more respect for myself.
+  9. (−) I certainly feel useless at times.
+  10. (−) At times I think I am no good at all.
+(reverse_coded: true for items 3,5,8,9,10.)
+Single trait: { key: 'SE', name: 'Self-Esteem' }.
+LICENSE: widely used; acknowledge Morris Rosenberg. VERIFY terms for commercial use.
+
+============================================================
+6. General Self-Efficacy Scale (GSE)   [state, retestIntervalDays: 90 — growth lever]
+============================================================
+slug: gse-10 | category: "Who Am I" | popular_equivalent: "Confidence / self-efficacy"
+scientific_reference: "Schwarzer & Jerusalem (1995)" | cronbach_alpha: 0.86 | input_type: likert_4
+Scale labels (1..4): 1=Not at all true, 2=Hardly true, 3=Moderately true, 4=Exactly true
+scoring: summation (range 10–40), no reverse items. Higher = greater self-efficacy.
+  1. I can always manage to solve difficult problems if I try hard enough.
+  2. If someone opposes me, I can find the means and ways to get what I want.
+  3. It is easy for me to stick to my aims and accomplish my goals.
+  4. I am confident that I could deal efficiently with unexpected events.
+  5. Thanks to my resourcefulness, I know how to handle unforeseen situations.
+  6. I can solve most problems if I invest the necessary effort.
+  7. I can remain calm when facing difficulties because I can rely on my coping abilities.
+  8. When I am confronted with a problem, I can usually find several solutions.
+  9. If I am in trouble, I can usually think of a solution.
+  10. I can usually handle whatever comes my way.
+Single trait: { key: 'SEF', name: 'Self-Efficacy' }.
+LICENSE: free with citation (Schwarzer & Jerusalem); VERIFY for commercial use.
+
+============================================================
+7. 360 Peer Competencies (CUSTOM — peer side only)   [observer-rated]
+============================================================
+slug: peer-360 | a PEER instrument (rendered on the feedback page, not self-taken), parallel to the 
+existing peer Big Five form. NOT a validated published scale — label it "Custom 360 feedback — no 
+published norms" and do NOT show a cronbach_alpha.
+input_type: likert_5 | Scale: 1=Strongly Disagree .. 5=Strongly Agree
+Prompt stem: "Based on your experience of this person..."  5 competencies, 2 items each:
+  Communication: explains their thinking clearly. / listens well and makes others feel heard.
+  Reliability: follows through on what they commit to. / can be counted on under pressure.
+  Empathy: is attuned to how others are feeling. / responds to others with genuine care.
+  Follow-through: turns intentions into action. / finishes what they start.
+  Leadership: brings out the best in people around them. / helps a group move toward a goal.
+Score each competency as the mean of its 2 items (1–5). Aggregate across raters with the existing 
+"minimum 3 responses" threshold, and segment by the relationship field from Phase 4.
+
+ACCEPTANCE
+- New input_type scales render correct labels; the scoring engine handles them (WHO-5 ×4 transform, 
+  I-PANAS-SF two-score multi_category, Cantril single-item).
+- Update the submit-route validation (assessmentResponsesSchema / completeness checks added 
+  recently) AND the scoring engine to accept the new input_type scales and the two-score 
+  I-PANAS-SF, so new-test submissions are not rejected.
+- Every new test marked state/trait with a retestIntervalDays; the ICAR one-time rule does NOT apply 
+  to these (they are meant to be repeated).
+- Only ship item text for the tests above. Do NOT add the Self-Compassion Scale (SCS) — it is 
+  copyrighted and needs a commercial license; leave a TODO instead.
+- tsc (`npm run check`) passes.

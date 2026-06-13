@@ -34,6 +34,12 @@ function isDistressRange(result: AssessmentResult): boolean {
       return score * 8 < 32; // Low flourishing
     case 'brs-6':
       return score < 25; // Low resilience
+    case 'who-5':
+      return score <= 50; // Low well-being (raw sum <= ~13 of 25)
+    case 'ucla-3':
+      return score >= 50; // Higher loneliness
+    case 'rses-10':
+      return score < 50; // Lower self-esteem
     default:
       return false;
   }

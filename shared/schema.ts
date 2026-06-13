@@ -307,7 +307,7 @@ export const profileHistory = pgTable("profile_history", {
 export const assessmentCategoryEnum = ['Who Am I', 'How I Think', 'How I Interact', 'How I Feel'] as const;
 export type AssessmentCategory = typeof assessmentCategoryEnum[number];
 
-export const inputTypeEnum = ['likert_5', 'likert_6', 'likert_7', 'binary', 'choice', 'multiple_choice'] as const;
+export const inputTypeEnum = ['likert_3', 'likert_4', 'likert_5', 'likert_6', 'likert_7', 'likert_0_4', 'likert_0_5', 'ladder_0_10', 'binary', 'choice', 'multiple_choice'] as const;
 export type InputType = typeof inputTypeEnum[number];
 
 export const scoringAlgorithmEnum = ['average', 'summation', 'complex_centering', 'binary_correct', 'multi_category'] as const;

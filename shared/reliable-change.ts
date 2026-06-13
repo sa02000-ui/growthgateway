@@ -69,7 +69,20 @@ export const ASSESSMENT_CLASSIFICATIONS: AssessmentClassification[] = [
   { slug: 'brs-6', measurementClass: 'state', retestIntervalDays: 30, cronbachAlpha: 0.83, sd: 18,
     aliases: ['brief resilience', 'brs', 'resilience'] },
   { slug: 'flourishing-8', measurementClass: 'state', retestIntervalDays: 30, cronbachAlpha: 0.87, sd: 16,
-    aliases: ['flourishing', 'well-being', 'wellbeing'] },
+    aliases: ['flourishing'] },
+  { slug: 'who-5', measurementClass: 'state', retestIntervalDays: 14, cronbachAlpha: 0.84, sd: 18,
+    aliases: ['who-5', 'who5', 'who well-being', 'well-being index'] },
+  { slug: 'i-panas-sf', measurementClass: 'state', retestIntervalDays: 7, cronbachAlpha: 0.78, sd: 18,
+    aliases: ['i-panas', 'panas', 'positive & negative affect', 'positive and negative affect', 'affect'] },
+  { slug: 'ucla-3', measurementClass: 'state', retestIntervalDays: 30, cronbachAlpha: 0.72, sd: 18,
+    aliases: ['ucla', 'loneliness'] },
+  // Cantril is a single-item measure: no internal-consistency alpha, so RCI is not computed.
+  { slug: 'cantril-ladder', measurementClass: 'state', retestIntervalDays: 7,
+    aliases: ['cantril', 'ladder', 'life evaluation'] },
+  { slug: 'rses-10', measurementClass: 'state', retestIntervalDays: 90, cronbachAlpha: 0.89, sd: 18,
+    aliases: ['rses', 'rosenberg', 'self-esteem'] },
+  { slug: 'gse-10', measurementClass: 'state', retestIntervalDays: 90, cronbachAlpha: 0.86, sd: 18,
+    aliases: ['gse', 'general self-efficacy', 'self-efficacy'] },
 ];
 
 /** Resolve a slug or assessment_type/name string to its classification. */
