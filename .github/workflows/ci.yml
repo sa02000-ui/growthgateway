@@ -1,0 +1,53 @@
+name: CI
+
+# Automated verification gate. Runs on every push and pull request to main so
+# any change — from any tool or contributor — is type-checked and built before
+# it can be merged/shipped. This is the "green check" that lets the project be
+# picked up and published by any AI or person without manual review of basics.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (tsc)
+        run: npm run check
+      - name: Build
+        run: npm run build
+
+  rls-drift:
+    name: RLS drift check (Supabase)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Assert RLS lockdown is still in force
+        # Uses the PUBLIC anon key exactly as the browser would, to catch any
+        # regression that re-opens private tables. Skips cleanly if the repo
+        # secrets aren't configured, so CI stays green out-of-the-box.
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "Supabase secrets not set — skipping RLS drift check."
+            echo "To enable: add repo secrets SUPABASE_URL and SUPABASE_ANON_KEY (anon key only)."
+            exit 0
+          fi
+          npx tsx security/check-rls.ts
