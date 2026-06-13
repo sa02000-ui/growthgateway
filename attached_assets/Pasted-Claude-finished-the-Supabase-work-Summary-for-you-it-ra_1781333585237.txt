@@ -1,0 +1,39 @@
+Claude finished the Supabase work. Summary for you (it ran SQL ONLY — no app code, no GitHub 
+commits — so you do NOT need to pull anything; the repo is unchanged):
+
+SCHEMA CHANGES (live on Supabase):
+- peer_feedback: added column `instrument text NOT NULL DEFAULT 'big-five'`. 
+  (The `relationship text` column you added earlier already existed — unchanged.)
+- New table `peer_invites`:
+    id uuid PK default gen_random_uuid(),
+    token text UNIQUE NOT NULL,
+    target_user_id uuid NOT NULL,
+    relationship text,
+    instrument text NOT NULL DEFAULT 'big-five',
+    used_at timestamptz,
+    expires_at timestamptz,
+    created_at timestamptz NOT NULL default timezone('utc', now())
+  Indexes on target_user_id and token.
+
+RLS:
+- Enabled on `peer_invites` with NO policies (service-role only, like feedback_tokens). 
+- Nothing else changed; auth/anon untouched.
+
+NOW PLEASE DO THE APP-SIDE WIRING (Phase 4 completion):
+1. Relationship segmentation: the `peer_feedback.relationship` column exists — make the feedback 
+   page require a relationship selector, store it, and add the relationship-segmented self-vs-peer 
+   view on the dashboard (respect the existing min-3-per-group privacy threshold).
+2. One-time invites: use the new `peer_invites` table. Generate a unique token per invitee 
+   (reuse the email-invite flow), resolve it server-side (requireAuth-protected where appropriate, 
+   service-role for the public submit), and set `used_at` on submission so each link works once. 
+   Keep a generic reusable link as a fallback if you want, rate-limited.
+3. 360 instrument: store 360 competency responses in `peer_feedback` with `instrument='peer-360'` 
+   and the 5 competency scores in the existing `scores` jsonb. Render PEER_360_INSTRUMENT 
+   (already in shared/assessments/category-five-seed.ts) on the feedback page; aggregate with the 
+   min-3 threshold and segment by relationship.
+4. Matched self mini-form: app-only, no schema needed — add the 30-item "I"-worded self version 
+   and compute the headline self-vs-peer gap on it.
+
+MIGRATIONS-AS-CODE: please also commit the above DDL as a supabase/migrations/*.sql file (or 
+generate the full baseline via `supabase db pull` once the CLI is linked) so the schema is 
+reproducible from the repo going forward.

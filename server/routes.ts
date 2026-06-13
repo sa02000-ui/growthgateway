@@ -5,9 +5,11 @@ import { supabase } from "./db";
 import { calculateAllTraitScores, validateResponses } from "@shared/scoring";
 import { assessmentResponsesSchema, traitScoresSchema, engineResponsesSchema, assessmentScoresSchema } from "@shared/schema";
 import { questions } from "@shared/ipip-neo-120";
-import { peerQuestions, calculatePeerScores } from "@shared/peer-feedback-questions";
+import { peerQuestions, calculatePeerScores, relationshipValues } from "@shared/peer-feedback-questions";
+import { calculatePeer360Scores } from "@shared/assessments/category-five-seed";
 import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
+import { registerPeerInviteRoutes, inviteStatus } from "./peer-invites";
 import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
 import { registerProfileRoutes } from "./profile-routes";
@@ -40,6 +42,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   registerAIInsightsRoutes(app);
   registerFeedbackTokenRoutes(app);
+  registerPeerInviteRoutes(app);
   registerEmailRoutes(app);
   registerShareResultsRoutes(app);
   registerProfileRoutes(app);
@@ -1008,7 +1011,8 @@ export async function registerRoutes(
   app.post("/api/peer-feedback/:userId", writeLimiter, async (req, res) => {
     try {
       const { userId } = req.params;
-      const { responses, peerName, isAnonymous } = req.body;
+      const { responses, peerName, isAnonymous, inviteToken } = req.body;
+      let { relationship, instrument } = req.body;
 
       if (!userId) {
         return res.status(400).json({ error: "userId is required" });
@@ -1018,11 +1022,65 @@ export async function registerRoutes(
         return res.status(400).json({ error: "responses are required" });
       }
 
-      const scores = calculatePeerScores(responses);
-      
-      const parsedScores = traitScoresSchema.safeParse(scores);
-      if (!parsedScores.success) {
-        return res.status(400).json({ error: "Invalid scores calculated" });
+      // One-time invite: validate before doing anything else, and let the
+      // invite be the server-side source of truth for relationship/instrument.
+      let invite: { token: string } | null = null;
+      if (inviteToken) {
+        const token = String(inviteToken).trim().toLowerCase();
+        const { data: inviteRow } = await supabase
+          .from('peer_invites')
+          .select('token, target_user_id, relationship, instrument, used_at, expires_at')
+          .eq('token', token)
+          .single();
+
+        if (!inviteRow || inviteRow.target_user_id !== userId) {
+          return res.status(404).json({ error: "Invalid invite link" });
+        }
+        const status = inviteStatus(inviteRow);
+        if (status === 'used') {
+          return res.status(409).json({ error: "This invite link has already been used." });
+        }
+        if (status === 'expired') {
+          return res.status(410).json({ error: "This invite link has expired." });
+        }
+        if (inviteRow.relationship) relationship = inviteRow.relationship;
+        if (inviteRow.instrument) instrument = inviteRow.instrument;
+        invite = { token: inviteRow.token };
+      }
+
+      instrument = instrument === 'peer-360' ? 'peer-360' : 'big-five';
+
+      if (!relationship || !relationshipValues.includes(relationship)) {
+        return res.status(400).json({ error: "A valid relationship is required" });
+      }
+
+      let scores: Record<string, number>;
+      if (instrument === 'peer-360') {
+        scores = calculatePeer360Scores(responses);
+        if (Object.keys(scores).length === 0) {
+          return res.status(400).json({ error: "Invalid 360 responses" });
+        }
+      } else {
+        scores = calculatePeerScores(responses);
+        const parsedScores = traitScoresSchema.safeParse(scores);
+        if (!parsedScores.success) {
+          return res.status(400).json({ error: "Invalid scores calculated" });
+        }
+      }
+
+      // One-time invite: burn the token atomically BEFORE inserting so two
+      // concurrent submissions can't both succeed. The conditional update only
+      // matches an unused token; a returned row proves we won the race.
+      if (invite) {
+        const { data: burned } = await supabase
+          .from('peer_invites')
+          .update({ used_at: new Date().toISOString() })
+          .eq('token', invite.token)
+          .is('used_at', null)
+          .select('token');
+        if (!burned || burned.length === 0) {
+          return res.status(409).json({ error: "This invite link has already been used." });
+        }
       }
 
       const { data, error } = await supabase
@@ -1032,11 +1090,20 @@ export async function registerRoutes(
           scores: scores,
           peer_name: isAnonymous ? null : peerName || null,
           is_anonymous: isAnonymous ? 'true' : 'false',
+          relationship,
+          instrument,
         })
         .select()
         .single();
 
       if (error) {
+        // Insert failed after burning the token — release it so the invitee can retry.
+        if (invite) {
+          await supabase
+            .from('peer_invites')
+            .update({ used_at: null })
+            .eq('token', invite.token);
+        }
         console.error('Supabase peer feedback insert error - Full details:', JSON.stringify({
           code: error.code,
           message: error.message,
@@ -1074,18 +1141,20 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Failed to fetch peer feedback" });
       }
 
-      // Calculate average scores across all feedback
+      // Calculate Big Five average scores. Exclude 360 rows so their
+      // competency-keyed scores don't pollute the NEOAC averages.
       let averageScores = null;
-      if (data && data.length > 0) {
+      const bigFive = (data || []).filter((fb) => (fb.instrument ?? 'big-five') !== 'peer-360');
+      if (bigFive.length > 0) {
         const traits = ['N', 'E', 'O', 'A', 'C'] as const;
         averageScores = {} as Record<string, number>;
-        
+
         for (const trait of traits) {
-          const sum = data.reduce((acc, fb) => {
+          const sum = bigFive.reduce((acc, fb) => {
             const scores = assessmentScoresSchema.parse(fb.scores);
             return acc + (scores[trait] || 0);
           }, 0);
-          averageScores[trait] = sum / data.length;
+          averageScores[trait] = sum / bigFive.length;
         }
       }
 
@@ -1211,6 +1280,11 @@ export async function registerRoutes(
         deletionResults.feedback_tokens = true;
         console.log('[Account Deletion] Deleted feedback_tokens entries');
       } catch (e) { console.log('[Account Deletion] No feedback_tokens to delete or error:', e); }
+
+      try {
+        await supabase.from('peer_invites').delete().eq('target_user_id', userId);
+        console.log('[Account Deletion] Deleted peer_invites entries');
+      } catch (e) { console.log('[Account Deletion] No peer_invites to delete or error:', e); }
 
       try {
         const pg = await import('pg');

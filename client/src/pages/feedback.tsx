@@ -8,19 +8,39 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Leaf, Loader2, ArrowLeft, ArrowRight, CheckCircle2, Heart } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Leaf, Loader2, ArrowLeft, ArrowRight, CheckCircle2, Heart, AlertCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import { likertScale, ATTENTION_CHECK } from '@shared/peer-feedback-questions';
+import {
+  likertScale,
+  ATTENTION_CHECK,
+  relationshipOptions,
+  relationshipLabels,
+  type RelationshipValue,
+} from '@shared/peer-feedback-questions';
+import { PEER_360_INSTRUMENT } from '@shared/assessments/category-five-seed';
 import Footer from '@/components/footer';
 
-interface Question {
+interface ApiQuestion {
   id: number;
   text: string;
   trait: string;
   keyed: '+' | '-';
 }
 
+interface FeedbackItem {
+  id: number;
+  text: string;
+}
+
+type Instrument = 'big-five' | 'peer-360';
 type FeedbackState = 'intro' | 'taking' | 'identity' | 'success';
+type InviteState = 'valid' | 'used' | 'expired' | null;
+
+const peer360Items: FeedbackItem[] = PEER_360_INSTRUMENT.questions.map((q) => ({
+  id: q.question_number,
+  text: q.text,
+}));
 
 export default function FeedbackPage() {
   const { userId: tokenOrId } = useParams<{ userId: string }>();
@@ -32,29 +52,65 @@ export default function FeedbackPage() {
   const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
   const [attentionResponse, setAttentionResponse] = useState<number | null>(null);
 
+  const [resolving, setResolving] = useState(true);
+  const [instrument, setInstrument] = useState<Instrument>('big-five');
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteState, setInviteState] = useState<InviteState>(null);
+  const [lockedRelationship, setLockedRelationship] = useState<RelationshipValue | null>(null);
+  const [relationship, setRelationship] = useState<RelationshipValue | ''>('');
+
   const questionsPerPage = 10;
 
   useEffect(() => {
-    async function resolveToken() {
-      if (!tokenOrId) return;
-      
+    async function resolve() {
+      if (!tokenOrId) {
+        setResolving(false);
+        return;
+      }
+
+      // 1. One-time invite token (carries instrument + optional relationship).
+      try {
+        const res = await fetch(`/api/peer-invite/${tokenOrId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setInviteToken(tokenOrId);
+          setInstrument(data.instrument === 'peer-360' ? 'peer-360' : 'big-five');
+          if (data.relationship) {
+            setLockedRelationship(data.relationship);
+            setRelationship(data.relationship);
+          }
+          setInviteState(data.status as InviteState);
+          setResolvedUserId(data.userId);
+          setResolving(false);
+          return;
+        }
+      } catch {
+        /* fall through */
+      }
+
+      // 2. Reusable secure feedback token.
       try {
         const res = await fetch(`/api/feedback-token/${tokenOrId}`);
         if (res.ok) {
           const data = await res.json();
           setResolvedUserId(data.userId);
+          setResolving(false);
           return;
         }
-      } catch (err) {
-        console.log('Token resolution failed');
+      } catch {
+        /* fall through */
       }
+
+      // 3. Raw id fallback.
       setResolvedUserId(tokenOrId);
+      setResolving(false);
     }
-    resolveToken();
+    resolve();
   }, [tokenOrId]);
 
-  const { data: questionsData, isLoading: questionsLoading } = useQuery<{ questions: Question[] }>({
+  const { data: questionsData, isLoading: questionsLoading } = useQuery<{ questions: ApiQuestion[] }>({
     queryKey: ['/api/peer-feedback/questions'],
+    enabled: instrument === 'big-five',
   });
 
   const { data: userData, isLoading: userLoading } = useQuery<{ userName: string; userId: string }>({
@@ -62,12 +118,23 @@ export default function FeedbackPage() {
     enabled: !!resolvedUserId,
   });
 
-  const questions = questionsData?.questions || [];
-  const totalPages = Math.ceil(questions.length / questionsPerPage);
+  const items: FeedbackItem[] =
+    instrument === 'peer-360'
+      ? peer360Items
+      : (questionsData?.questions || []).map((q) => ({ id: q.id, text: q.text }));
+
+  const totalPages = Math.max(1, Math.ceil(items.length / questionsPerPage));
   const userName = userData?.userName || 'This person';
 
   const submitMutation = useMutation({
-    mutationFn: async (data: { responses: Record<string, number>; peerName: string | null; isAnonymous: boolean }) => {
+    mutationFn: async (data: {
+      responses: Record<string, number>;
+      peerName: string | null;
+      isAnonymous: boolean;
+      relationship: RelationshipValue;
+      instrument: Instrument;
+      inviteToken: string | null;
+    }) => {
       const res = await apiRequest('POST', `/api/peer-feedback/${resolvedUserId}`, data);
       if (!res.ok) {
         const errorData = await res.json();
@@ -84,49 +151,39 @@ export default function FeedbackPage() {
   });
 
   const handleResponse = (questionId: number, value: number) => {
-    setResponses(prev => ({
-      ...prev,
-      [String(questionId)]: value,
-    }));
+    setResponses((prev) => ({ ...prev, [String(questionId)]: value }));
   };
 
   const getCurrentPageQuestions = () => {
     const start = currentPage * questionsPerPage;
-    return questions.slice(start, start + questionsPerPage);
+    return items.slice(start, start + questionsPerPage);
   };
 
-  const canProceed = () => {
-    const pageQuestions = getCurrentPageQuestions();
-    return pageQuestions.every(q => responses[String(q.id)] !== undefined);
-  };
+  const canProceed = () => getCurrentPageQuestions().every((q) => responses[String(q.id)] !== undefined);
 
   const getCompletionPercentage = () => {
-    if (questions.length === 0) return 0;
-    return Math.round((Object.keys(responses).length / questions.length) * 100);
+    if (items.length === 0) return 0;
+    const answered = items.filter((q) => responses[String(q.id)] !== undefined).length;
+    return Math.round((answered / items.length) * 100);
   };
 
-  // Detect straight-lining: identical raw response to every item. Because the
-  // form mixes positively- and negatively-keyed items, a genuine respondent
-  // should not give the same answer to all of them.
+  // Detect straight-lining: identical raw response to every item.
   const isStraightLining = () => {
-    const vals = questions
-      .map(q => responses[String(q.id)])
-      .filter((v): v is number => v !== undefined);
-    if (vals.length < questions.length || vals.length === 0) return false;
+    const vals = items.map((q) => responses[String(q.id)]).filter((v): v is number => v !== undefined);
+    if (vals.length < items.length || vals.length === 0) return false;
     return new Set(vals).size === 1;
   };
 
-  // Gate that runs when the respondent finishes the last page of items.
   const handleFinishQuestions = () => {
     if (attentionResponse !== ATTENTION_CHECK.expected) {
       alert(
-        "Attention check: please re-read the highlighted quality-control item and select the requested option before continuing."
+        'Attention check: please re-read the highlighted quality-control item and select the requested option before continuing.'
       );
       return;
     }
     if (isStraightLining()) {
       const proceed = window.confirm(
-        "It looks like you gave the same answer to every question. Honest, varied answers help the most. Continue anyway?"
+        'It looks like you gave the same answer to every question. Honest, varied answers help the most. Continue anyway?'
       );
       if (!proceed) return;
     }
@@ -134,17 +191,56 @@ export default function FeedbackPage() {
   };
 
   const handleSubmit = () => {
+    if (!relationship) {
+      alert('Please choose how you know this person before submitting.');
+      return;
+    }
     submitMutation.mutate({
       responses,
       peerName: isAnonymous ? null : peerName || null,
       isAnonymous,
+      relationship,
+      instrument,
+      inviteToken,
     });
   };
 
-  if (questionsLoading || userLoading || !resolvedUserId) {
+  if (resolving || (instrument === 'big-five' && questionsLoading) || userLoading || !resolvedUserId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Used / expired one-time invite.
+  if (inviteState === 'used' || inviteState === 'expired') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="p-4 md:p-8 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Leaf className="w-6 h-6 text-primary" />
+            <span className="text-foreground font-semibold text-lg tracking-tight">GrowthPortal</span>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardContent className="p-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-7 h-7 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-foreground mb-2" data-testid="text-invite-invalid">
+                {inviteState === 'used' ? 'This link has already been used' : 'This link has expired'}
+              </h2>
+              <p className="text-muted-foreground">
+                {inviteState === 'used'
+                  ? 'Each invitation link works once to keep feedback fair. Please ask for a fresh link if you still need to respond.'
+                  : 'This invitation is no longer active. Please ask for a new link to share your feedback.'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
       </div>
     );
   }
@@ -190,7 +286,7 @@ export default function FeedbackPage() {
                 Thank You!
               </h2>
               <p className="text-muted-foreground">
-                Your feedback has been submitted. {userName} will be able to see how you perceive them, 
+                Your feedback has been submitted. {userName} will be able to see how you perceive them,
                 helping them on their growth journey.
               </p>
             </CardContent>
@@ -214,11 +310,37 @@ export default function FeedbackPage() {
           <Card className="max-w-md w-full">
             <CardHeader>
               <CardTitle className="text-xl text-foreground">Almost Done!</CardTitle>
-              <CardDescription>
-                How should your name appear to {userName}?
-              </CardDescription>
+              <CardDescription>How should your name appear to {userName}?</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="relationship">How do you know {userName}?</Label>
+                {lockedRelationship ? (
+                  <div
+                    className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-foreground"
+                    data-testid="text-relationship-locked"
+                  >
+                    {relationshipLabels[lockedRelationship]}
+                  </div>
+                ) : (
+                  <Select value={relationship} onValueChange={(v) => setRelationship(v as RelationshipValue)}>
+                    <SelectTrigger id="relationship" data-testid="select-relationship">
+                      <SelectValue placeholder="Select your relationship" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {relationshipOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} data-testid={`option-relationship-${opt.value}`}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This groups feedback by relationship. {userName} only ever sees grouped averages, never who said what.
+                </p>
+              </div>
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="peerName">Your Name (optional)</Label>
@@ -245,17 +367,13 @@ export default function FeedbackPage() {
               </div>
 
               <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setState('taking')}
-                  className="flex-1"
-                >
+                <Button variant="outline" onClick={() => setState('taking')} className="flex-1">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitMutation.isPending}
+                  disabled={submitMutation.isPending || !relationship}
                   className="flex-1 gap-2"
                   data-testid="button-submit-feedback"
                 >
@@ -284,11 +402,7 @@ export default function FeedbackPage() {
       <div className="min-h-screen bg-background flex flex-col">
         <header className="sticky top-0 z-50 p-4 border-b border-border bg-background/95 backdrop-blur">
           <div className="max-w-3xl mx-auto flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setState('intro')}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setState('intro')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div className="flex-1">
@@ -309,7 +423,9 @@ export default function FeedbackPage() {
               <Card className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
                 <CardContent className="p-4">
                   <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                    Rate how much you agree or disagree with each statement about <strong>{userName}</strong>. Base your answers on what you've personally observed — there are no right or wrong responses.
+                    {instrument === 'peer-360'
+                      ? <>Rate how much you agree that each statement describes <strong>{userName}</strong> in everyday situations. Base your answers on what you've personally observed.</>
+                      : <>Rate how much you agree or disagree with each statement about <strong>{userName}</strong>. Base your answers on what you've personally observed — there are no right or wrong responses.</>}
                   </p>
                 </CardContent>
               </Card>
@@ -319,9 +435,7 @@ export default function FeedbackPage() {
                 {pageQuestions.map((question) => (
                   <div key={question.id} className="space-y-4">
                     <div className="flex gap-3">
-                      <span className="text-sm font-medium text-muted-foreground min-w-[2rem]">
-                        {question.id}.
-                      </span>
+                      <span className="text-sm font-medium text-muted-foreground min-w-[2rem]">{question.id}.</span>
                       <p className="text-foreground font-medium" data-testid={`text-question-${question.id}`}>
                         {question.text}
                       </p>
@@ -333,11 +447,7 @@ export default function FeedbackPage() {
                     >
                       {likertScale.map((option) => (
                         <div key={option.value} className="flex items-center">
-                          <RadioGroupItem
-                            value={option.value.toString()}
-                            id={`q${question.id}-${option.value}`}
-                            className="sr-only"
-                          />
+                          <RadioGroupItem value={option.value.toString()} id={`q${question.id}-${option.value}`} className="sr-only" />
                           <Label
                             htmlFor={`q${question.id}-${option.value}`}
                             className={`px-3 py-2 rounded-md text-sm cursor-pointer transition-colors border ${
@@ -373,11 +483,7 @@ export default function FeedbackPage() {
                   >
                     {likertScale.map((option) => (
                       <div key={option.value} className="flex items-center">
-                        <RadioGroupItem
-                          value={option.value.toString()}
-                          id={`attn-${option.value}`}
-                          className="sr-only"
-                        />
+                        <RadioGroupItem value={option.value.toString()} id={`attn-${option.value}`} className="sr-only" />
                         <Label
                           htmlFor={`attn-${option.value}`}
                           className={`px-3 py-2 rounded-md text-sm cursor-pointer transition-colors border ${
@@ -399,7 +505,7 @@ export default function FeedbackPage() {
             <div className="flex items-center justify-between gap-4 mt-6">
               <Button
                 variant="outline"
-                onClick={() => setCurrentPage(p => p - 1)}
+                onClick={() => setCurrentPage((p) => p - 1)}
                 disabled={currentPage === 0}
                 className="gap-2"
               >
@@ -418,11 +524,7 @@ export default function FeedbackPage() {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Button
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  disabled={!canProceed()}
-                  className="gap-2"
-                >
+                <Button onClick={() => setCurrentPage((p) => p + 1)} disabled={!canProceed()} className="gap-2">
                   Next
                   <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -455,19 +557,19 @@ export default function FeedbackPage() {
               Help {userName} Grow
             </CardTitle>
             <CardDescription className="text-base mt-2">
-              {userName} has invited you to share how you perceive them. Your honest feedback 
-              will help them understand how they come across to others.
+              {userName} has invited you to share how you perceive them. Your honest feedback will help them
+              understand how they come across to others.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-primary" />
-                <span className="text-foreground">30 quick questions</span>
+                <span className="text-foreground">{items.length || 30} quick questions</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-primary" />
-                <span className="text-foreground">Takes about 5 minutes</span>
+                <span className="text-foreground">Takes about {instrument === 'peer-360' ? '3' : '5'} minutes</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-primary" />
@@ -475,11 +577,7 @@ export default function FeedbackPage() {
               </div>
             </div>
 
-            <Button 
-              onClick={() => setState('taking')} 
-              className="w-full gap-2"
-              data-testid="button-start-feedback"
-            >
+            <Button onClick={() => setState('taking')} className="w-full gap-2" data-testid="button-start-feedback">
               Start Feedback
               <ArrowRight className="w-4 h-4" />
             </Button>

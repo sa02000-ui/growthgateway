@@ -70,15 +70,76 @@ export const traitNames: Record<TraitKey, string> = {
   C: "Conscientiousness",
 };
 
-export function calculatePeerScores(responses: Record<string, number>): Record<TraitKey, number> {
+// Matched "I"-worded self version of the 30 peer items. Same ids / traits /
+// keying so self and peer are scored on identical anchors for an apples-to-apples
+// self-vs-peer gap.
+export const selfMiniQuestions: PeerQuestion[] = [
+  { id: 1, text: "I worry about things.", trait: "N", keyed: "+" },
+  { id: 6, text: "I am relaxed most of the time.", trait: "N", keyed: "-" },
+  { id: 11, text: "I get stressed out easily.", trait: "N", keyed: "+" },
+  { id: 16, text: "I rarely get irritated.", trait: "N", keyed: "-" },
+  { id: 21, text: "I often feel blue.", trait: "N", keyed: "+" },
+  { id: 26, text: "I seldom feel blue.", trait: "N", keyed: "-" },
+
+  { id: 2, text: "I make friends easily.", trait: "E", keyed: "+" },
+  { id: 7, text: "I keep in the background.", trait: "E", keyed: "-" },
+  { id: 12, text: "I am the life of the party.", trait: "E", keyed: "+" },
+  { id: 17, text: "I don't talk a lot.", trait: "E", keyed: "-" },
+  { id: 22, text: "I know how to captivate people.", trait: "E", keyed: "+" },
+  { id: 27, text: "My experiences seem somewhat dull.", trait: "E", keyed: "-" },
+
+  { id: 3, text: "I have a vivid imagination.", trait: "O", keyed: "+" },
+  { id: 8, text: "I am not interested in abstract ideas.", trait: "O", keyed: "-" },
+  { id: 13, text: "I enjoy hearing new ideas.", trait: "O", keyed: "+" },
+  { id: 18, text: "I avoid philosophical discussions.", trait: "O", keyed: "-" },
+  { id: 23, text: "I carry conversations to a higher level.", trait: "O", keyed: "+" },
+  { id: 28, text: "I do not like art.", trait: "O", keyed: "-" },
+
+  { id: 4, text: "I have a good word for everyone.", trait: "A", keyed: "+" },
+  { id: 9, text: "I have a sharp tongue.", trait: "A", keyed: "-" },
+  { id: 14, text: "I believe that others have good intentions.", trait: "A", keyed: "+" },
+  { id: 19, text: "I cut others to pieces.", trait: "A", keyed: "-" },
+  { id: 24, text: "I make people feel at ease.", trait: "A", keyed: "+" },
+  { id: 29, text: "I am not interested in other people's problems.", trait: "A", keyed: "-" },
+
+  { id: 5, text: "I am always prepared.", trait: "C", keyed: "+" },
+  { id: 10, text: "I waste my time.", trait: "C", keyed: "-" },
+  { id: 15, text: "I get chores done right away.", trait: "C", keyed: "+" },
+  { id: 20, text: "I find it difficult to get down to work.", trait: "C", keyed: "-" },
+  { id: 25, text: "I carry out my plans.", trait: "C", keyed: "+" },
+  { id: 30, text: "I do just enough work to get by.", trait: "C", keyed: "-" },
+];
+
+// Relationship segments used to group peer feedback (respecting the min-3
+// privacy threshold per group on the dashboard).
+export type RelationshipValue = 'family' | 'friend' | 'partner' | 'colleague' | 'manager' | 'other';
+
+export const relationshipOptions: { value: RelationshipValue; label: string }[] = [
+  { value: 'family', label: 'Family' },
+  { value: 'friend', label: 'Friend' },
+  { value: 'partner', label: 'Partner / Spouse' },
+  { value: 'colleague', label: 'Colleague' },
+  { value: 'manager', label: 'Manager / Mentor' },
+  { value: 'other', label: 'Other' },
+];
+
+export const relationshipValues: RelationshipValue[] = relationshipOptions.map(o => o.value);
+
+export const relationshipLabels: Record<RelationshipValue, string> = relationshipOptions.reduce(
+  (acc, o) => { acc[o.value] = o.label; return acc; },
+  {} as Record<RelationshipValue, string>,
+);
+
+// Shared Big Five scorer over any matched item set (peer or self mini-form).
+function scoreBigFive(questions: PeerQuestion[], responses: Record<string, number>): Record<TraitKey, number> {
   const traits: TraitKey[] = ['N', 'E', 'O', 'A', 'C'];
   const scores: Record<TraitKey, number> = { N: 0, E: 0, O: 0, A: 0, C: 0 };
-  
+
   for (const trait of traits) {
-    const traitQuestions = peerQuestions.filter(q => q.trait === trait);
+    const traitQuestions = questions.filter(q => q.trait === trait);
     let sum = 0;
     let count = 0;
-    
+
     for (const q of traitQuestions) {
       const response = responses[String(q.id)];
       if (response !== undefined) {
@@ -87,12 +148,20 @@ export function calculatePeerScores(responses: Record<string, number>): Record<T
         count++;
       }
     }
-    
+
     if (count > 0) {
       const avg = sum / count;
       scores[trait] = ((avg - 1) / 4) * 100;
     }
   }
-  
+
   return scores;
+}
+
+export function calculatePeerScores(responses: Record<string, number>): Record<TraitKey, number> {
+  return scoreBigFive(peerQuestions, responses);
+}
+
+export function calculateSelfMiniScores(responses: Record<string, number>): Record<TraitKey, number> {
+  return scoreBigFive(selfMiniQuestions, responses);
 }

@@ -278,3 +278,30 @@ export const PEER_360_INSTRUMENT = {
     { question_number: 10, text: 'This person adjusts their approach when circumstances shift.', competency_key: 'ADAPTABILITY' },
   ],
 };
+
+export const peer360CompetencyNames: Record<string, string> =
+  PEER_360_INSTRUMENT.competencies.reduce((acc, c) => { acc[c.key] = c.name; return acc; }, {} as Record<string, string>);
+
+// Score the 360 instrument: each competency is the mean of its (all
+// positively-worded) likert_5 items, normalised to 0-100. Returns a flat map
+// keyed by competency_key — stored in the peer_feedback.scores jsonb.
+export function calculatePeer360Scores(responses: Record<string, number>): Record<string, number> {
+  const scores: Record<string, number> = {};
+  for (const comp of PEER_360_INSTRUMENT.competencies) {
+    const qs = PEER_360_INSTRUMENT.questions.filter(q => q.competency_key === comp.key);
+    let sum = 0;
+    let count = 0;
+    for (const q of qs) {
+      const r = responses[String(q.question_number)];
+      if (r !== undefined) {
+        sum += r;
+        count++;
+      }
+    }
+    if (count > 0) {
+      const avg = sum / count;
+      scores[comp.key] = ((avg - 1) / 4) * 100;
+    }
+  }
+  return scores;
+}

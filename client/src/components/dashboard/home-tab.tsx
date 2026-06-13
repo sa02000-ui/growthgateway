@@ -188,14 +188,19 @@ export default function HomeTab() {
             .select('*')
             .eq('target_user_id', user.id);
 
-          if (!peerError && peerData && peerData.length > 0) {
-            setPeerCount(peerData.length);
+          // Big Five radar uses only big-five rows; 360 rows carry
+          // competency-keyed scores that would pollute NEOAC averages.
+          const bigFivePeers = (peerData || []).filter(
+            (fb: any) => (fb.instrument ?? 'big-five') !== 'peer-360'
+          );
+          if (!peerError && bigFivePeers.length > 0) {
+            setPeerCount(bigFivePeers.length);
             // Calculate averages
             const traits: TraitKey[] = ['N', 'E', 'O', 'A', 'C'];
             const averages: Record<TraitKey, number> = { N: 0, E: 0, O: 0, A: 0, C: 0 };
             for (const trait of traits) {
-              const sum = peerData.reduce((acc: number, fb: any) => acc + (fb.scores?.[trait] || 0), 0);
-              averages[trait] = sum / peerData.length;
+              const sum = bigFivePeers.reduce((acc: number, fb: any) => acc + (fb.scores?.[trait] || 0), 0);
+              averages[trait] = sum / bigFivePeers.length;
             }
             setPeerAverages(averages);
           }
