@@ -10,6 +10,16 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { Users, Copy, CheckCircle2, Clock, Shield, Eye, EyeOff, Loader2, Mail, Plus, X, ArrowLeft, ArrowRight, UserCheck, Sparkles } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  Legend,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
 import { getAuthHeaders } from '@/lib/queryClient';
@@ -28,6 +38,17 @@ import { PEER_360_INSTRUMENT, peer360CompetencyNames } from '@shared/assessments
 const PRIVACY_THRESHOLD = 3;
 const BIG_FIVE_TRAITS = ['N', 'E', 'O', 'A', 'C'] as const;
 type Instrument = 'big-five' | 'peer-360';
+
+// Distinct, theme-aligned colors so each relationship segment is
+// distinguishable when overlaid on the 360 competency radar chart.
+const RELATIONSHIP_COLORS: Record<string, string> = {
+  family: 'hsl(var(--chart-1))',
+  friend: 'hsl(var(--chart-2))',
+  partner: 'hsl(var(--chart-3))',
+  colleague: 'hsl(var(--chart-4))',
+  manager: 'hsl(var(--chart-5))',
+  other: 'hsl(var(--muted-foreground))',
+};
 
 interface PeerFeedbackItem {
   id: string;
@@ -181,6 +202,17 @@ export default function PeerFeedbackTab() {
       return { rel, count: rows.length, averages: averageScores(rows, competencyKeys) };
     })
     .filter((s) => s.count >= PRIVACY_THRESHOLD);
+
+  // One row per competency, with an "overall" value plus one value per
+  // qualifying relationship segment, so they can be overlaid on a radar chart.
+  const peer360ChartData = competencyKeys.map((k) => {
+    const point: Record<string, string | number> = { competency: peer360CompetencyNames[k] };
+    if (peer360Overall) point.overall = Math.round(peer360Overall[k] ?? 0);
+    peer360Segments.forEach((seg) => {
+      point[seg.rel] = Math.round(seg.averages[k] ?? 0);
+    });
+    return point;
+  });
 
   // Headline gap: matched self vs big-five peer average (overall, min-3).
   const bigFivePeerAvg = bigFiveFeedback.length >= PRIVACY_THRESHOLD ? averageScores(bigFiveFeedback, BIG_FIVE_TRAITS) : null;
@@ -530,35 +562,94 @@ export default function PeerFeedbackTab() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {peer360Overall && (
-              <div data-testid="segment-360-overall">
-                <p className="font-medium text-foreground mb-3">Overall</p>
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                  {competencyKeys.map((k) => (
-                    <div key={k} className="rounded-md border border-border p-3">
-                      <p className="text-xs text-muted-foreground">{peer360CompetencyNames[k]}</p>
-                      <p className="text-lg font-semibold text-foreground">{Math.round(peer360Overall[k] ?? 0)}</p>
-                    </div>
+            <div className="h-[340px]" data-testid="chart-360-radar">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={peer360ChartData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis
+                    dataKey="competency"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tickLine={false}
+                  />
+                  <PolarRadiusAxis
+                    angle={90}
+                    domain={[0, 100]}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }}
+                    tickCount={5}
+                  />
+                  {peer360Overall && (
+                    <Radar
+                      name="Overall"
+                      dataKey="overall"
+                      stroke="hsl(var(--primary))"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.3}
+                      strokeWidth={2}
+                    />
+                  )}
+                  {peer360Segments.map((seg) => (
+                    <Radar
+                      key={seg.rel}
+                      name={relationshipLabels[seg.rel]}
+                      dataKey={seg.rel}
+                      stroke={RELATIONSHIP_COLORS[seg.rel] ?? 'hsl(var(--muted-foreground))'}
+                      fill="transparent"
+                      strokeWidth={2}
+                      strokeDasharray="5 3"
+                    />
                   ))}
-                </div>
+                  <Legend
+                    wrapperStyle={{ paddingTop: '12px', fontSize: '11px' }}
+                    formatter={(value) => <span className="text-muted-foreground">{value}</span>}
+                  />
+                  <RechartsTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const competency = payload[0]?.payload?.competency;
+                        return (
+                          <div
+                            className="bg-card border border-border rounded-md p-3 shadow-md text-sm"
+                            data-testid="tooltip-360-radar"
+                            role="tooltip"
+                          >
+                            <p className="font-medium text-foreground mb-2">{competency}</p>
+                            {payload.map((entry) => (
+                              <p key={String(entry.dataKey)} className="text-muted-foreground mt-1">
+                                <span
+                                  className="inline-block w-3 h-3 rounded-full mr-2 align-middle"
+                                  style={{ backgroundColor: entry.color }}
+                                  aria-hidden="true"
+                                ></span>
+                                {entry.name}: <span className="font-medium text-foreground">{entry.value as number}</span>
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {peer360Segments.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2" data-testid="legend-360-segments">
+                {peer360Segments.map((seg) => (
+                  <Badge key={seg.rel} variant="secondary" data-testid={`segment-360-${seg.rel}`}>
+                    {relationshipLabels[seg.rel]}: {seg.count} responses
+                  </Badge>
+                ))}
               </div>
             )}
-            {peer360Segments.map((seg) => (
-              <div key={seg.rel} data-testid={`segment-360-${seg.rel}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-medium text-foreground">{relationshipLabels[seg.rel]}</p>
-                  <Badge variant="secondary">{seg.count} responses</Badge>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                  {competencyKeys.map((k) => (
-                    <div key={k} className="rounded-md border border-border p-3">
-                      <p className="text-xs text-muted-foreground">{peer360CompetencyNames[k]}</p>
-                      <p className="text-lg font-semibold text-foreground">{Math.round(seg.averages[k] ?? 0)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+
+            <div className="p-3 bg-muted/30 rounded-md border border-border" data-testid="text-360-legend">
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground">How to read this chart:</strong> The solid shape is your
+                overall peer-rated competency profile. Each dashed outline is a different relationship group, so
+                you can compare how various people in your life experience your everyday strengths.
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
