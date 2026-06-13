@@ -1,4 +1,3 @@
-import type { Express, Request, Response } from "express";
 import { getSendGridCredentials } from "./sendgrid";
 
 const APP_NAME = "GrowthPortal";
@@ -106,44 +105,4 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<SendRe
       error: error instanceof Error ? error.message : "Failed to send email",
     };
   }
-}
-
-// Backwards-compatible endpoint: send invites to a list of emails sharing one link.
-export function registerEmailRoutes(app: Express): void {
-  app.post("/api/send-invite", async (req: Request, res: Response) => {
-    try {
-      const { emails, fromName, feedbackUrl, customMessage } = req.body;
-
-      if (!emails || !Array.isArray(emails) || emails.length === 0) {
-        return res.status(400).json({ error: "emails array is required" });
-      }
-      if (!fromName || !feedbackUrl) {
-        return res.status(400).json({ error: "fromName and feedbackUrl are required" });
-      }
-
-      const results = await Promise.all(
-        emails.map(async (email: string) => {
-          const result = await sendInviteEmail({
-            to: email,
-            fromName,
-            link: feedbackUrl,
-            customMessage,
-          });
-          return { email, success: result.sent, error: result.error };
-        }),
-      );
-
-      const successCount = results.filter((r) => r.success).length;
-
-      res.json({
-        success: successCount > 0,
-        sent: successCount,
-        total: emails.length,
-        results,
-      });
-    } catch (error) {
-      console.error("Send invite error:", error);
-      res.status(500).json({ error: "Failed to send invites" });
-    }
-  });
 }

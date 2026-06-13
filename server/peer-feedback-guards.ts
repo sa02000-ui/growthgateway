@@ -28,27 +28,33 @@ export function dedupKey(
   return `${userId}::${ip}::${fingerprint(responses)}`;
 }
 
-export async function isDuplicateSubmission(key: string): Promise<boolean> {
+// Atomically claim a submission key. Returns true if the claim was acquired
+// (i.e. not a recent duplicate), false if an unexpired entry already exists.
+// A single atomic INSERT ... ON CONFLICT closes the check-then-write race where
+// two concurrent identical submissions could both pass a separate read. Expired
+// entries are reclaimable so the key frees up after DEDUP_TTL_MS.
+export async function acquireSubmission(key: string): Promise<boolean> {
   await ensureInfraTables();
   // Opportunistically purge expired rows. DB-gated and fire-and-forget so it
-  // runs at most once per interval across instances and never blocks the
-  // duplicate check (which already ignores expired rows via expires_at > now()).
+  // runs at most once per interval across instances and never blocks the claim.
   triggerSpamProtectionCleanup();
   const result = await pool.query(
-    "SELECT 1 FROM peer_feedback_dedup WHERE key = $1 AND expires_at > now()",
-    [key],
+    `INSERT INTO peer_feedback_dedup (key, expires_at)
+     VALUES ($1, now() + ($2::bigint * interval '1 millisecond'))
+     ON CONFLICT (key) DO UPDATE
+       SET expires_at = EXCLUDED.expires_at
+       WHERE peer_feedback_dedup.expires_at <= now()
+     RETURNING key`,
+    [key, DEDUP_TTL_MS],
   );
   return result.rowCount !== null && result.rowCount > 0;
 }
 
-export async function rememberSubmission(key: string): Promise<void> {
+// Release a previously-acquired claim. Called when the write that the claim was
+// protecting fails, so a legitimate retry isn't blocked for the full TTL.
+export async function releaseSubmission(key: string): Promise<void> {
   await ensureInfraTables();
-  await pool.query(
-    `INSERT INTO peer_feedback_dedup (key, expires_at)
-     VALUES ($1, now() + ($2::bigint * interval '1 millisecond'))
-     ON CONFLICT (key) DO UPDATE SET expires_at = EXCLUDED.expires_at`,
-    [key, DEDUP_TTL_MS],
-  );
+  await pool.query("DELETE FROM peer_feedback_dedup WHERE key = $1", [key]);
 }
 
 // Authoritative check of the instructed-response attention item.

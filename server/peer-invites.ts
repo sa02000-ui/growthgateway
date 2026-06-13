@@ -31,11 +31,16 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-// Build the public origin for invite links. Prefer a client-supplied origin
-// (validated), falling back to the proxy-aware request headers.
+// Build the public origin for invite links from a configured app URL or the
+// (proxy-aware) request headers. We deliberately do NOT trust a client-supplied
+// origin: these links are emailed from a verified sender, so an attacker-
+// controlled origin would turn an official invite into a phishing link riding on
+// our domain's reputation.
 function resolveOrigin(req: Request): string {
-  const bodyOrigin = typeof req.body?.origin === "string" ? req.body.origin.trim() : "";
-  if (/^https?:\/\/[^\s/]+$/.test(bodyOrigin)) return bodyOrigin.replace(/\/+$/, "");
+  const configured = process.env.PUBLIC_APP_URL?.trim();
+  if (configured && /^https?:\/\/[^\s/]+/.test(configured)) {
+    return configured.replace(/\/+$/, "");
+  }
   const host = req.get("host") ?? "";
   const proto = (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim() || req.protocol || "https";
   return `${proto}://${host}`;

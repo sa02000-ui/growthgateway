@@ -54,7 +54,11 @@ export function registerAIInsightsRoutes(app: Express): void {
         return res.status(404).json({ error: "No assessment results found" });
       }
 
-      const selfScores = assessmentScoresSchema.parse(latestResult.scores) as unknown as TraitScores;
+      const parsedSelf = assessmentScoresSchema.safeParse(latestResult.scores);
+      if (!parsedSelf.success) {
+        return res.status(422).json({ error: "Latest assessment scores are not in the expected Big Five format." });
+      }
+      const selfScores = parsedSelf.data as unknown as TraitScores;
 
       const { data: peerFeedback, error: peerError } = await supabase
         .from('peer_feedback')
@@ -64,21 +68,24 @@ export function registerAIInsightsRoutes(app: Express): void {
       const validPeerFeedback = (peerError || !peerFeedback) ? [] : peerFeedback;
 
       let peerScores: TraitScores | null = null;
-      if (validPeerFeedback.length >= 3) {
+      const traits: (keyof TraitScores)[] = ['N', 'E', 'O', 'A', 'C'];
+      // Only count peer records whose scores match the expected shape, so one
+      // malformed legacy row doesn't crash the whole insight request.
+      const parsedPeers = validPeerFeedback
+        .map(fb => assessmentScoresSchema.safeParse(fb.scores))
+        .filter((r): r is Extract<typeof r, { success: true }> => r.success)
+        .map(r => r.data);
+
+      if (parsedPeers.length >= 3) {
         const avgScores: TraitScores = { N: 0, E: 0, O: 0, A: 0, C: 0 };
-        const traits: (keyof TraitScores)[] = ['N', 'E', 'O', 'A', 'C'];
-        
-        validPeerFeedback.forEach(fb => {
-          const scores = assessmentScoresSchema.parse(fb.scores);
+        parsedPeers.forEach(scores => {
           traits.forEach(trait => {
-            avgScores[trait] += scores[trait] || 0;
+            avgScores[trait] += (scores as Record<string, number>)[trait] || 0;
           });
         });
-        
         traits.forEach(trait => {
-          avgScores[trait] = Math.round(avgScores[trait] / validPeerFeedback.length);
+          avgScores[trait] = Math.round(avgScores[trait] / parsedPeers.length);
         });
-        
         peerScores = avgScores;
       }
 
@@ -116,7 +123,7 @@ ${Object.entries(selfScores).map(([trait, score]) => `- ${traitNames[trait as ke
       if (peerScores) {
         analysisPrompt += `
 
-NETWORK PERCEPTION (Average of ${peerFeedback?.length} peers):
+NETWORK PERCEPTION (Average of ${parsedPeers.length} peers):
 ${Object.entries(peerScores).map(([trait, score]) => `- ${traitNames[trait as keyof TraitScores]}: ${score}%`).join('\n')}`;
       } else {
         analysisPrompt += `

@@ -10,7 +10,6 @@ import { calculatePeer360Scores } from "@shared/assessments/category-five-seed";
 import { registerAIInsightsRoutes } from "./ai-insights";
 import { registerFeedbackTokenRoutes } from "./feedback-tokens";
 import { registerPeerInviteRoutes, inviteStatus } from "./peer-invites";
-import { registerEmailRoutes } from "./email";
 import { registerShareResultsRoutes } from "./share-results";
 import { registerProfileRoutes } from "./profile-routes";
 import { calculateAssessmentScore, type QuestionData } from "@shared/scoring-engine";
@@ -18,8 +17,8 @@ import { requireAuth, getUserId } from "./auth";
 import { writeLimiter, openFeedbackLimiter } from "./rate-limit";
 import {
   dedupKey,
-  isDuplicateSubmission,
-  rememberSubmission,
+  acquireSubmission,
+  releaseSubmission,
   passesAttentionCheck,
   isStraightLined,
 } from "./peer-feedback-guards";
@@ -50,7 +49,6 @@ export async function registerRoutes(
   registerAIInsightsRoutes(app);
   registerFeedbackTokenRoutes(app);
   registerPeerInviteRoutes(app);
-  registerEmailRoutes(app);
   registerShareResultsRoutes(app);
   registerProfileRoutes(app);
 
@@ -1016,6 +1014,11 @@ export async function registerRoutes(
 
   // Submit peer feedback (public)
   app.post("/api/peer-feedback/:userId", writeLimiter, openFeedbackLimiter, async (req, res) => {
+    // Cleanup state for the outer catch: if an exception is thrown after we
+    // claim the dedup key / burn the invite, we must undo both so a legitimate
+    // retry isn't blocked and a one-time invite isn't consumed by a failed write.
+    let claimedKey: string | null = null;
+    let burnedToken: string | null = null;
     try {
       const { userId } = req.params;
       const { responses, peerName, isAnonymous, inviteToken, attentionResponse } = req.body;
@@ -1043,9 +1046,6 @@ export async function registerRoutes(
       // client (per target + IP + response fingerprint), within a short window.
       const ip = req.ip || "unknown";
       const submissionKey = dedupKey(userId, ip, responses as Record<string, unknown>);
-      if (await isDuplicateSubmission(submissionKey)) {
-        return res.status(429).json({ error: "Duplicate submission detected. This feedback was already received." });
-      }
 
       // One-time invite: validate before doing anything else, and let the
       // invite be the server-side source of truth for relationship/instrument.
@@ -1093,6 +1093,15 @@ export async function registerRoutes(
         }
       }
 
+      // Atomically claim this submission to block concurrent/rapid duplicates.
+      // Done here (after validation) so a rejected submission doesn't consume the
+      // dedup slot, and atomically (vs. a separate read) so two concurrent
+      // identical submissions can't both pass. Released below if the write fails.
+      if (!(await acquireSubmission(submissionKey))) {
+        return res.status(429).json({ error: "Duplicate submission detected. This feedback was already received." });
+      }
+      claimedKey = submissionKey;
+
       // One-time invite: burn the token atomically BEFORE inserting so two
       // concurrent submissions can't both succeed. The conditional update only
       // matches an unused token; a returned row proves we won the race.
@@ -1104,8 +1113,11 @@ export async function registerRoutes(
           .is('used_at', null)
           .select('token');
         if (!burned || burned.length === 0) {
+          await releaseSubmission(submissionKey);
+          claimedKey = null;
           return res.status(409).json({ error: "This invite link has already been used." });
         }
+        burnedToken = invite.token;
       }
 
       const { data, error } = await supabase
@@ -1122,7 +1134,9 @@ export async function registerRoutes(
         .single();
 
       if (error) {
-        // Insert failed after burning the token — release it so the invitee can retry.
+        // Insert failed — release the dedup claim so a legitimate retry isn't
+        // blocked, and release the burned token so the invitee can retry.
+        await releaseSubmission(submissionKey);
         if (invite) {
           await supabase
             .from('peer_invites')
@@ -1143,10 +1157,23 @@ export async function registerRoutes(
         });
       }
 
-      await rememberSubmission(submissionKey);
       res.json({ success: true, feedbackId: data.id });
     } catch (error) {
       console.error('Peer feedback submission error:', error);
+      // Undo any side effects so a thrown exception after the claim/burn doesn't
+      // permanently block a retry or consume a one-time invite. Best-effort; we
+      // don't let cleanup failures mask the original error.
+      try {
+        if (claimedKey) await releaseSubmission(claimedKey);
+        if (burnedToken) {
+          await supabase
+            .from('peer_invites')
+            .update({ used_at: null })
+            .eq('token', burnedToken);
+        }
+      } catch (cleanupError) {
+        console.error('Peer feedback cleanup error:', cleanupError);
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

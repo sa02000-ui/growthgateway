@@ -43,7 +43,14 @@ export function ensureInfraTables(): Promise<void> {
         INSERT INTO spam_protection_cleanup (id) VALUES (1)
         ON CONFLICT (id) DO NOTHING
       `);
-    })();
+    })().catch((err) => {
+      // A transient failure during init must not be cached forever: clear the
+      // memoized promise so the next caller retries instead of being stuck with
+      // a permanently-rejected promise (which would break rate-limit/dedup
+      // until the process restarts).
+      ready = null;
+      throw err;
+    });
   }
   return ready;
 }
