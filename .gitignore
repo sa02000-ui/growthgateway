@@ -4,3 +4,8 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Secrets — never commit real env files. .env.example (committed) documents the keys.
+.env
+.env.*
+!.env.example
