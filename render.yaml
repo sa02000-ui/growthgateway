@@ -1,0 +1,42 @@
+# Render Blueprint — deploy-from-GitHub for the Personality & Growth Portal.
+# Render runs the Express server as a persistent Node process (matches how the app
+# runs on Replit today). Connect this repo in the Render dashboard (New + → Blueprint),
+# then set the secret env vars below in the dashboard. Every push to `main` then
+# auto-deploys.
+#
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: growth-portal
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # PORT is provided by Render automatically; the server reads process.env.PORT.
+      #
+      # --- Secrets: set these in the Render dashboard (sync:false = not stored in git) ---
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY            # anon / publishable key (safe for the browser)
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # After consolidation, point this at the SUPABASE Postgres connection string:
+      #   postgresql://postgres:[PASSWORD]@db.<ref>.supabase.co:5432/postgres?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      - key: AI_INTEGRATIONS_OPENAI_API_KEY
+        sync: false
+      - key: AI_INTEGRATIONS_OPENAI_BASE_URL
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: INVITE_FROM_EMAIL
+        sync: false
