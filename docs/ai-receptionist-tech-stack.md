@@ -147,7 +147,46 @@ Phase 1 white-label margins are similar (wholesale $55–200 vs retail $250–50
 
 ---
 
-## 8. Sources
+## 8. Addendum — Follow-up Q&A (July 2026)
+
+### Q1: Can everything run inside a single GoHighLevel agency account with a custom frontend on top?
+
+**Mostly yes — this is a legitimate consolidation of the Phase 1/2 stack.** GHL SaaS Pro covers the unified inbox (SMS, email, FB Messenger, IG DM, WhatsApp, webchat), Voice AI, calendars, CRM, workflows, sub-account-per-client, and rebilling. [GHL API v2](https://marketplace.gohighlevel.com/docs/) supports programmatic sub-account provisioning and building a fully custom client dashboard on GHL data (contacts, conversations, calendars, payments, webhooks) so clients never see GHL. Known limits:
+
+- **Voice quality:** GHL Voice AI (~$0.16/min) trails Retell/Vapi on latency and interruption handling. Mitigation: external voice agents can be wired into GHL sub-accounts via webhooks — swap only the voice layer later.
+- **No real RAG/self-improvement:** Conversation AI's per-sub-account training (site crawl + Q&A) is shallow; the eval/KB-mining loop (§4) remains a build regardless.
+- **API rate limits:** 100 req/10s burst, 200k req/day per app per resource — fine for dashboards, plan for it in real-time features.
+- **HIPAA:** paid add-on required before medical clients; verify BAA scope covers AI features.
+- **Platform risk:** the custom frontend is the hedge — it keeps the customer relationship portable if GHL is outgrown.
+
+**Verdict:** GHL + custom frontend replaces ~70% of the assembled stack; the differentiators (great voice, per-tenant RAG, self-audit loop) bolt on incrementally via API/webhooks without re-platforming.
+
+### Q2: Isn't Twilio cheaper/better than Retell for voice?
+
+**Different layers.** Twilio is the carrier: [$0.0085/min inbound, $0.014/min outbound](https://www.twilio.com/en-us/pricing) for raw audio — no STT, no LLM, no TTS, no turn-taking. Retell is the AI conversation engine *on top of* a carrier (it uses Twilio/Telnyx underneath or accepts a BYO number): its $0.07/min (~[$0.11–0.15/min all-in](https://www.retellai.com/blog/ai-voice-agent-pricing-full-cost-breakdown-platform-comparison-roi-analysis)) buys the orchestration — streaming STT/LLM/TTS, ~600ms turn latency, barge-in handling, voicemail detection, transfers. Using "just Twilio" for an AI receptionist means **Twilio ConversationRelay**: a WebSocket that streams call audio to your server where you supply STT/LLM/TTS yourself — i.e., building your own pipeline (Q3). Cheaper per minute, expensive in engineering.
+
+### Q3: How to build the Phase-3 owned voice pipeline
+
+```
+Caller → PSTN number (Telnyx/Twilio, ~$0.01/min)
+       → SIP → LiveKit SIP bridge or Twilio ConversationRelay
+       → agent process (Pipecat or LiveKit Agents, Python):
+           VAD (Silero, free)
+           → STT: Deepgram streaming (~$0.006/min)
+           → tenant RAG lookup + LLM w/ tools (~$0.01–0.03/min)
+              tools: check_availability / book_appointment / send_email / transfer_to_human
+           → TTS: Cartesia (~$0.02/min) or ElevenLabs Flash
+       → audio back to caller
+```
+
+- **Framework:** Pipecat (pipeline-of-processors control, v1.0 April 2026) if phone-voice is the whole product; LiveKit Agents if browser/video calls are on the roadmap (its SIP bridge makes phone calls identical to web calls). Managed middle step: Pipecat Cloud / LiveKit Cloud (autoscaling, PSTN, HIPAA).
+- **All-in cost:** ~$0.04–0.07/min vs Retell's $0.11–0.15 (50–60% cut).
+- **The hard 20%:** sub-800ms voice-to-voice latency (stream every stage, start TTS mid-LLM-sentence); interruption/turn-taking (cancel in-flight LLM+TTS cleanly); telephony edge cases (voicemail detection, DTMF, hold, transfers, noisy audio → Krisp); ops (concurrency autoscaling, recording storage, eval regression suites via Hamming/Coval before every change).
+- **Effort:** 1–2 strong engineers, 2–3 months to production quality, permanent ops load. Break-even: ~$3.5–5k/mo saved at 50k min/mo; clearly worth it at 200k+ min/mo or when pipeline control becomes a product requirement.
+
+---
+
+## 9. Sources
 
 - EliseAI: [eliseai.com](https://eliseai.com/), [platform overview](https://eliseai.com/platform-overview), [ButterflyMX MeetElise review](https://butterflymx.com/blog/meetelise-review/), [Layer3 AI leasing buyer guide (pricing norms)](https://www.layer3labs.io/guides/ai-leasing-assistant), [Revyse leasing AI reviews](https://revyse.com/categories/leasing-ai), [G2 EliseAI alternatives](https://www.g2.com/products/eliseai/competitors/alternatives), [Funnel vs EliseAI](https://funnelleasing.com/funnel-leasing-vs-eliseai-for-multifamily-operators/)
 - White-label programs: [My AI Front Desk white-label](https://www.myaifrontdesk.com/white-label) + [pricing post](https://www.myaifrontdesk.com/blogs/unlock-agency-growth-transparent-my-ai-front-desk-white-label-pricing-revealed), [Synthflow agency docs](https://docs.synthflow.ai/about-agency-whitelabel) + [rebilling docs](https://docs.synthflow.ai/set-up-pricing-and-rebilling), [Ring-Ready reseller comparison](https://www.ring-ready.com/resellers/compare), [Ringlyn 2026 reseller playbook](https://www.ringlyn.com/blog/white-label-ai-voice-agent-reseller-program-2026/), [Trillet reseller comparison](https://trillet.ai/blogs/voice-agent-reseller-program-comparison) *(vendor-authored — verify with trials)*
