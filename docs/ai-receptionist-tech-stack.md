@@ -190,6 +190,18 @@ Caller → PSTN number (Telnyx/Twilio, ~$0.01/min)
 
 **Strategic implication:** MAFD's business is the glue layer (orchestration, onboarding wizard, reseller dashboard, billing) wrapped around ~$0.03–0.06/min of commodity parts, wholesaled at ~$55/receptionist + $0.12/min. That's exactly the layer Phase 2 of this plan builds and owns — white-labeling in Phase 1 rents their production tuning (turn-taking, edge cases, uptime), not proprietary technology.
 
+### Q5: Why not just use GHL as the hub and plug applications in as needed? (DECISION)
+
+**Correct — this supersedes the §3 "assemble it yourself" stack as the chosen architecture.** GHL already provides the CRM, unified inbox, calendars, workflows, funnels, sub-accounts, white-label, and Stripe rebilling; building or buying those separately adds cost without differentiation. Retell has a [native GHL integration](https://www.retellai.com/integrations/go-high-level) plus marketplace connectors ([Sympana](https://www.retellai.com/app-partner/sympana)) that sync agents, phone numbers, calendars, and post-call contact tagging into GHL with no code.
+
+**Chosen architecture:**
+- **Chassis:** GHL SaaS Pro — CRM, inbox (SMS/email/FB/IG/WhatsApp/webchat), calendars, workflows, billing, sub-account per client.
+- **Voice plug-in:** Retell via native integration/Sympana — books into GHL calendars, tags contacts, fires GHL workflows.
+- **Custom build (the only code we own):** one service for (a) per-business knowledge/RAG quality and (b) the self-audit loop — score transcripts, mine human call recordings, write results back to GHL notes/custom fields, weekly report via GHL email.
+- **Plug-and-play deployment:** GHL **snapshots** — a fully configured niche sub-account (salon, clinic, leasing) cloned per new customer + connect calendar + crawl site.
+
+**Known tripwires:** (1) GHL+Retell is a common agency playbook — moat = niche packs + knowledge quality + audit loop, not the platform; (2) platform dependency — keep brand/frontend ours and schedule data exports; (3) HIPAA needs GHL's add-on and BAA coverage across the full flow before medical clients; (4) connector glue (webhooks) needs monitoring at scale — consolidation onto owned infra is a >100-client optimization, not a starting point.
+
 ---
 
 ## 9. Glossary (plain language)
