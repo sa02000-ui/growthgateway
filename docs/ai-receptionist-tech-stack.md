@@ -192,7 +192,19 @@ Caller → PSTN number (Telnyx/Twilio, ~$0.01/min)
 
 ---
 
-## 9. Sources
+## 9. Glossary (plain language)
+
+- **STT (Speech-to-Text):** software that transcribes spoken audio into text (Deepgram, AssemblyAI, Whisper). The AI "hears" through this.
+- **TTS (Text-to-Speech):** software that turns text into a spoken voice (ElevenLabs, Cartesia, Amazon Polly). The AI "talks" through this.
+- **LLM (Large Language Model):** the AI "brain" that reads the transcript, consults the knowledge base, and decides what to say/do. Vendor-neutral term — OpenAI's GPT, Anthropic's Claude, and Google's Gemini are all LLMs. "GPT" is technically OpenAI's brand, used colloquially for the whole category; the LLM slot in a voice pipeline is swappable between vendors.
+- **STT → LLM → TTS loop:** one conversational turn: caller speaks → transcribed (STT) → LLM decides the reply → spoken back (TTS). Repeats every exchange.
+- **Sub-800ms:** the loop completes in under 0.8 seconds — the silence between the caller finishing and the AI replying. Humans pause ~0.5–1s naturally; under ~800ms feels human, 2–3s makes callers hang up. The key quality metric for voice AI.
+- **A2P 10DLC:** US carrier registration required for automated business texting ("Application-to-Person") from normal 10-digit numbers. Unregistered traffic is filtered/blocked. Every customer needs their own registration (days to approve) — build it into onboarding; Twilio/Telnyx file it via API.
+- **Rented speech model:** using a vendor's STT/TTS/LLM via API with per-use billing instead of owning models. Nearly every AI receptionist product rents all its AI and owns only the orchestration.
+
+---
+
+## 10. Sources
 
 - EliseAI: [eliseai.com](https://eliseai.com/), [platform overview](https://eliseai.com/platform-overview), [ButterflyMX MeetElise review](https://butterflymx.com/blog/meetelise-review/), [Layer3 AI leasing buyer guide (pricing norms)](https://www.layer3labs.io/guides/ai-leasing-assistant), [Revyse leasing AI reviews](https://revyse.com/categories/leasing-ai), [G2 EliseAI alternatives](https://www.g2.com/products/eliseai/competitors/alternatives), [Funnel vs EliseAI](https://funnelleasing.com/funnel-leasing-vs-eliseai-for-multifamily-operators/)
 - White-label programs: [My AI Front Desk white-label](https://www.myaifrontdesk.com/white-label) + [pricing post](https://www.myaifrontdesk.com/blogs/unlock-agency-growth-transparent-my-ai-front-desk-white-label-pricing-revealed), [Synthflow agency docs](https://docs.synthflow.ai/about-agency-whitelabel) + [rebilling docs](https://docs.synthflow.ai/set-up-pricing-and-rebilling), [Ring-Ready reseller comparison](https://www.ring-ready.com/resellers/compare), [Ringlyn 2026 reseller playbook](https://www.ringlyn.com/blog/white-label-ai-voice-agent-reseller-program-2026/), [Trillet reseller comparison](https://trillet.ai/blogs/voice-agent-reseller-program-comparison) *(vendor-authored — verify with trials)*
