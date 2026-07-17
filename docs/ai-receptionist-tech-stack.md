@@ -184,6 +184,12 @@ Caller → PSTN number (Telnyx/Twilio, ~$0.01/min)
 - **The hard 20%:** sub-800ms voice-to-voice latency (stream every stage, start TTS mid-LLM-sentence); interruption/turn-taking (cancel in-flight LLM+TTS cleanly); telephony edge cases (voicemail detection, DTMF, hold, transfers, noisy audio → Krisp); ops (concurrency autoscaling, recording storage, eval regression suites via Hamming/Coval before every change).
 - **Effort:** 1–2 strong engineers, 2–3 months to production quality, permanent ops load. Break-even: ~$3.5–5k/mo saved at 50k min/mo; clearly worth it at 200k+ min/mo or when pipeline control becomes a product requirement.
 
+### Q4: What is My AI Front Desk itself built on?
+
+**Not publicly disclosed — but it's an assembly of the same commodity components in this doc.** Confirmed: **Zapier** (its "6,000+ integrations" is the Zapier catalog), **Stripe** (built into white-label billing), aggregated neural TTS ("100+ voices" implies multiple commodity TTS vendors), and a standard STT → LLM → TTS loop at sub-800ms per third-party reviews. Near-certain by inference: a programmable carrier (Twilio/Telnyx class — instant number provisioning, $0.12/min overages, A2P 10DLC SMS registration) and a GPT-class LLM via API (5-minute "training" = prompt/knowledge injection, not model training). Their site blocks automated access to the privacy policy/subprocessor list; no founder interview or job posting names vendors.
+
+**Strategic implication:** MAFD's business is the glue layer (orchestration, onboarding wizard, reseller dashboard, billing) wrapped around ~$0.03–0.06/min of commodity parts, wholesaled at ~$55/receptionist + $0.12/min. That's exactly the layer Phase 2 of this plan builds and owns — white-labeling in Phase 1 rents their production tuning (turn-taking, edge cases, uptime), not proprietary technology.
+
 ---
 
 ## 9. Sources
