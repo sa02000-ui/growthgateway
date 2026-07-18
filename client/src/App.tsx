@@ -13,6 +13,8 @@ import Privacy from "@/pages/privacy";
 import FeedbackPage from "@/pages/feedback";
 import SharedResultsPage from "@/pages/shared-results";
 import NotFound from "@/pages/not-found";
+import ReceptionistDashboard from "@/pages/receptionist-dashboard";
+import ReceptionistOnboarding from "@/pages/receptionist-onboarding";
 
 function Router() {
   return (
@@ -24,6 +26,8 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/feedback/:userId" component={FeedbackPage} />
       <Route path="/shared/:token" component={SharedResultsPage} />
+      <Route path="/receptionist" component={ReceptionistDashboard} />
+      <Route path="/receptionist/onboarding" component={ReceptionistOnboarding} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/dashboard/:rest*" component={Dashboard} />
       <Route component={NotFound} />
