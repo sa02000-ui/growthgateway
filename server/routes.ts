@@ -13,6 +13,7 @@ import { registerPeerInviteRoutes, inviteStatus } from "./peer-invites";
 import { registerShareResultsRoutes } from "./share-results";
 import { registerProfileRoutes } from "./profile-routes";
 import { registerReceptionistRoutes } from "./receptionist/routes";
+import { registerCrmRoutes } from "./receptionist/crm-routes";
 import { calculateAssessmentScore, type QuestionData } from "@shared/scoring-engine";
 import { requireAuth, getUserId } from "./auth";
 import { writeLimiter, openFeedbackLimiter } from "./rate-limit";
@@ -53,6 +54,7 @@ export async function registerRoutes(
   registerShareResultsRoutes(app);
   registerProfileRoutes(app);
   registerReceptionistRoutes(app);
+  registerCrmRoutes(app);
 
   // Supabase configuration endpoint for frontend
   app.get("/api/config", (_req, res) => {

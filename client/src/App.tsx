@@ -15,6 +15,7 @@ import SharedResultsPage from "@/pages/shared-results";
 import NotFound from "@/pages/not-found";
 import ReceptionistDashboard from "@/pages/receptionist-dashboard";
 import ReceptionistOnboarding from "@/pages/receptionist-onboarding";
+import ReceptionistCrm from "@/pages/receptionist-crm";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/shared/:token" component={SharedResultsPage} />
       <Route path="/receptionist" component={ReceptionistDashboard} />
       <Route path="/receptionist/onboarding" component={ReceptionistOnboarding} />
+      <Route path="/receptionist/crm" component={ReceptionistCrm} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/dashboard/:rest*" component={Dashboard} />
       <Route component={NotFound} />

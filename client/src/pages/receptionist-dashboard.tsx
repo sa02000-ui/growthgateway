@@ -52,8 +52,7 @@ interface Suggestion {
 
 const STEP_LABELS: Record<string, string> = {
   ghl_location: "CRM workspace",
-  retell_agent: "AI agent trained",
-  phone_number: "Phone number assigned",
+  ghl_ai_config: "AI receptionist configured",
   a2p_registration: "Text messaging registration",
 };
 
@@ -153,9 +152,14 @@ export default function ReceptionistDashboard() {
               )}
             </p>
           </div>
-          <Badge variant={tenant.status === "active" ? "default" : tenant.status === "error" ? "destructive" : "secondary"}>
-            {tenant.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Link href="/receptionist/crm">
+              <Button variant="outline" size="sm">Open CRM</Button>
+            </Link>
+            <Badge variant={tenant.status === "active" ? "default" : tenant.status === "error" ? "destructive" : "secondary"}>
+              {tenant.status}
+            </Badge>
+          </div>
         </div>
 
         {/* Provisioning status */}

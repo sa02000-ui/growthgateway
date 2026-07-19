@@ -1,11 +1,24 @@
 # AI Receptionist Module — Setup Guide
 
 The receptionist module is a self-contained "wrapper app" inside this repo: clients fill
-out one onboarding form, the platform provisions a GoHighLevel sub-account + Retell voice
-agent + phone number automatically, and clients manage everything (calls, transcripts,
-reports, improvement suggestions, settings) from our portal — never logging into GHL or
-Retell. See `docs/ai-receptionist-tech-stack.md` for the market research and architecture
-decision (GHL-as-hub, Q5).
+out one onboarding form, the platform provisions a GoHighLevel sub-account from a niche
+snapshot (which carries the CRM setup **and the GHL-native AI receptionist**), writes the
+business-specific AI configuration into location custom values, and gives clients a full
+CRM front-end (inbox, contacts, pipeline, appointments) plus receptionist reports and
+settings in our portal — never logging into GHL. See `docs/ai-receptionist-tech-stack.md`
+for the market research and architecture decision (GHL-as-hub, Q5).
+
+**How the AI config flows to GHL:** niche snapshots must reference these location custom
+values in their Conversation AI / Voice AI prompts and workflows (names defined in
+`server/receptionist/onboarding.ts` `CUSTOM_VALUE_KEYS`):
+
+- `AI Receptionist Prompt` — full system prompt (niche pack + business facts + FAQs)
+- `AI Receptionist Greeting` — the greeting line (includes recording-consent wording)
+- `AI Transfer Number` — human handoff destination
+
+The wrapper rewrites these on every settings change and approved FAQ suggestion, so the
+GHL agent always reflects the portal state. The Retell client remains in the codebase as
+an optional premium-voice upgrade path but is no longer part of default provisioning.
 
 ## Module layout
 
@@ -19,9 +32,11 @@ decision (GHL-as-hub, Q5).
 | `server/receptionist/niche-packs.ts` | Per-vertical prompt packs (salon, medical, leasing, ...) + prompt builder |
 | `server/receptionist/onboarding.ts` | Idempotent provisioning orchestrator (resumable, per-step status) |
 | `server/receptionist/audit.ts` | LLM-as-judge call scoring + FAQ-gap mining into suggestions |
-| `server/receptionist/routes.ts` | Portal API + Retell webhook receiver |
+| `server/receptionist/routes.ts` | Portal API + Retell webhook receiver (legacy/optional) |
+| `server/receptionist/crm-routes.ts` | CRM proxy: contacts, inbox + send, pipeline, appointments (location-scoped) |
 | `client/src/pages/receptionist-onboarding.tsx` | 4-step client setup wizard (`/receptionist/onboarding`) |
 | `client/src/pages/receptionist-dashboard.tsx` | Client portal dashboard (`/receptionist`) |
+| `client/src/pages/receptionist-crm.tsx` | Full CRM front-end (`/receptionist/crm`) |
 | `scripts/onboard-client.ts` | CLI onboarding for ops use |
 
 ## Environment variables
@@ -68,12 +83,12 @@ ever pasted into a chat or ticket.
 `POST /api/receptionist/onboarding` → orchestrator runs idempotent steps, each recorded on
 `receptionist_tenants.provisioning`:
 
-1. **ghl_location** — creates the GHL sub-account, cloning `GHL_SNAPSHOT_<NICHE>` if set.
-2. **retell_agent** — builds the system prompt (niche pack + business facts + FAQs) and
-   creates the Retell LLM + agent (with transfer-to-human tool when a number is provided).
-3. **phone_number** — buys a number bound to the agent.
-4. **a2p_registration** — recorded as `manual`: A2P 10DLC needs EIN/address and carrier
-   approval takes days; submit via GHL/Twilio and mark done.
+1. **ghl_location** — creates the GHL sub-account, cloning `GHL_SNAPSHOT_<NICHE>` (the
+   snapshot carries pipelines, calendars, workflows, and the AI employee).
+2. **ghl_ai_config** — writes the business-specific prompt/greeting/transfer number into
+   the location's custom values so the snapshot's AI speaks for this business.
+3. **a2p_registration** — recorded as `manual`: A2P 10DLC needs EIN/address and carrier
+   approval takes days; submit via GHL and mark done.
 
 Failed runs set tenant status `error`; `POST /api/receptionist/provision/retry` resumes
 from the first incomplete step.
